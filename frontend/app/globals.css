@@ -1,0 +1,33 @@
+:root {
+  --background: #f5f7fb;
+  --foreground: #101828;
+  --card-background: #ffffff;
+  --border: #dfe3ec;
+  --muted: #475467;
+  --brand: #1d4ed8;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: linear-gradient(180deg, #eef4ff 0%, #f5f7fb 100%);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+main {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
