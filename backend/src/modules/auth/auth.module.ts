@@ -10,6 +10,6 @@ import { AccessTokenGuard } from "./guards/access-token.guard";
   imports: [PrismaModule, JwtModule.register({})],
   controllers: [AuthController],
   providers: [AuthService, PasswordHasherService, AccessTokenGuard],
-  exports: [AuthService, AccessTokenGuard],
+  exports: [AuthService, AccessTokenGuard, JwtModule],
 })
 export class AuthModule {}
