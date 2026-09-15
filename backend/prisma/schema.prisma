@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  MEMBER
+}
+
+enum BookableStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DurationMode {
+  FLEXIBLE
+  FIXED
+}
+
+enum AvailabilityWindowType {
+  RECURRING
+  SPECIFIC
+}
+
+enum AvailabilityExceptionType {
+  BLOCK
+  OVERRIDE
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum AccessCodeStatus {
+  ACTIVE
+  USED
+  EXPIRED
+  REVOKED
+}
+
+model User {
+  id                   String                @id @default(uuid()) @db.Uuid
+  email                String                @unique @db.VarChar(320)
+  passwordHash         String                @db.VarChar(255)
+  name                 String                @db.VarChar(200)
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
+  memberships          OrganizationMembership[]
+  reservations         Reservation[]         @relation("ReservationCustomer")
+  refreshSessions      RefreshSession[]
+  idempotencyRecords   IdempotencyRecord[]
+}
+
+model Organization {
+  id            String                   @id @default(uuid()) @db.Uuid
+  name          String                   @db.VarChar(200)
+  slug          String                   @unique @db.VarChar(120)
+  timezone      String                   @default("Africa/Lagos") @db.VarChar(100)
+  createdAt     DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime                 @updatedAt @db.Timestamptz(3)
+  memberships   OrganizationMembership[]
+  bookables     Bookable[]
+}
+
+model OrganizationMembership {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  organizationId String       @db.Uuid
+  role           MembershipRole
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, role])
+}
+
+model Bookable {
+  id                String                    @id @default(uuid()) @db.Uuid
+  organizationId    String                    @db.Uuid
+  name              String                    @db.VarChar(200)
+  description       String?
+  slug              String                    @unique @db.VarChar(160)
+  status            BookableStatus             @default(DRAFT)
+  capacity          Int
+  createdAt         DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                  @updatedAt @db.Timestamptz(3)
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  reservationRule   BookableReservationRule?
+  availability      AvailabilityWindow[]
+  exceptions        AvailabilityException[]
+  reservations      Reservation[]
+  images            BookableImage[]
+
+  @@index([organizationId, status])
+}
+
+model BookableReservationRule {
+  id                   String    @id @default(uuid()) @db.Uuid
+  bookableId           String    @unique @db.Uuid
+  durationMode         DurationMode
+  minimumDuration      Int?
+  maximumDuration      Int?
+  fixedDuration        Int?
+  minimumAdvanceTime   Int?
+  maximumAdvanceTime   Int?
+  cancellationDeadline Int?
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+  bookable             Bookable  @relation(fields: [bookableId], references: [id], onDelete: Cascade)
+}
+
+model AvailabilityWindow {
+  id         String                  @id @default(uuid()) @db.Uuid
+  bookableId String                  @db.Uuid
+  type       AvailabilityWindowType
+  weekday    Int?
+  startTime  String?                 @db.VarChar(5)
+  endTime    String?                 @db.VarChar(5)
+  startAt    DateTime?               @db.Timestamptz(3)
+  endAt      DateTime?               @db.Timestamptz(3)
+  createdAt  DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime                @updatedAt @db.Timestamptz(3)
+  bookable   Bookable                @relation(fields: [bookableId], references: [id], onDelete: Cascade)
+
+  @@index([bookableId, type, weekday])
+  @@index([bookableId, startAt, endAt])
+}
+
+model AvailabilityException {
+  id         String                     @id @default(uuid()) @db.Uuid
+  bookableId String                     @db.Uuid
+  type       AvailabilityExceptionType
+  startAt    DateTime                   @db.Timestamptz(3)
+  endAt      DateTime                   @db.Timestamptz(3)
+  createdAt  DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime                   @updatedAt @db.Timestamptz(3)
+  bookable   Bookable                   @relation(fields: [bookableId], references: [id], onDelete: Cascade)
+
+  @@index([bookableId, startAt, endAt])
+}
+
+model Reservation {
+  id         String            @id @default(uuid()) @db.Uuid
+  bookableId String            @db.Uuid
+  customerId String            @db.Uuid
+  startAt    DateTime          @db.Timestamptz(3)
+  endAt      DateTime          @db.Timestamptz(3)
+  quantity   Int
+  status     ReservationStatus @default(PENDING)
+  expiresAt  DateTime?         @db.Timestamptz(3)
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime          @updatedAt @db.Timestamptz(3)
+  bookable   Bookable          @relation(fields: [bookableId], references: [id], onDelete: Restrict)
+  customer   User              @relation("ReservationCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  payment    Payment?
+  accessCodes AccessCode[]
+
+  @@index([bookableId, startAt, endAt])
+  @@index([customerId, status])
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  reservationId     String        @unique @db.Uuid
+  provider          String        @db.VarChar(80)
+  providerReference String        @db.VarChar(255)
+  amount            Decimal       @db.Decimal(18, 2)
+  currency          String        @db.Char(3)
+  status            PaymentStatus @default(PENDING)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+  reservation       Reservation   @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerReference])
+}
+
+model AccessCode {
+  id            String            @id @default(uuid()) @db.Uuid
+  reservationId String            @db.Uuid
+  codeHash      String            @db.VarChar(255)
+  status        AccessCodeStatus  @default(ACTIVE)
+  expiresAt     DateTime?         @db.Timestamptz(3)
+  usedAt        DateTime?         @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+  reservation   Reservation       @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+
+  @@index([reservationId, status])
+  @@index([status, expiresAt])
+}
+
+model BookableImage {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookableId String   @db.Uuid
+  storageKey String   @db.VarChar(500)
+  url        String   @db.VarChar(2000)
+  altText    String?  @db.VarChar(300)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+  bookable   Bookable @relation(fields: [bookableId], references: [id], onDelete: Cascade)
+
+  @@index([bookableId, sortOrder])
+}
+
+model RefreshSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  tokenHash  String   @db.VarChar(255)
+  expiresAt  DateTime @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model IdempotencyRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  key        String   @db.VarChar(255)
+  operation  String   @db.VarChar(120)
+  requestHash String  @db.VarChar(128)
+  status     String   @db.VarChar(40)
+  response   Json
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt  DateTime @db.Timestamptz(3)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, operation, key])
+  @@index([userId, expiresAt])
+}
