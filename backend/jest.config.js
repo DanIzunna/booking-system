@@ -7,4 +7,5 @@ module.exports = {
   },
   collectCoverageFrom: ["src/**/*.ts"],
   testEnvironment: "node",
+  setupFiles: ["<rootDir>/test/setup-env.ts"],
 };
