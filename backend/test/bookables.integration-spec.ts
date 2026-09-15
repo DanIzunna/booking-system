@@ -1,0 +1,338 @@
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+import cookieParser from "cookie-parser";
+import request from "supertest";
+import { AppModule } from "../src/app.module";
+import { PrismaService } from "../src/common/prisma/prisma.service";
+
+interface UserSession {
+  id: string;
+  accessToken: string;
+}
+
+interface OrganizationRecord {
+  id: string;
+  slug: string;
+}
+
+interface BookableRecord {
+  id: string;
+  organizationId: string;
+  slug: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  capacity: number;
+}
+
+describe("Bookables (integration)", () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  const userIds: string[] = [];
+  const organizationIds: string[] = [];
+  const bookableIds: string[] = [];
+  let owner: UserSession;
+  let member: UserSession;
+  let outsider: UserSession;
+  let organization: OrganizationRecord;
+  let secondOrganization: OrganizationRecord;
+  let outsiderOrganization: OrganizationRecord;
+  let ownerBookable: BookableRecord;
+  let memberBookable: BookableRecord;
+  let secondOrganizationBookable: BookableRecord;
+  let outsiderBookable: BookableRecord;
+
+  beforeAll(async () => {
+    if (!process.env.DATABASE_URL) {
+      throw new Error(
+        "DATABASE_URL is required for Bookables integration tests",
+      );
+    }
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    app.use(cookieParser());
+    app.setGlobalPrefix("api/v1");
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+        stopAtFirstError: true,
+      }),
+    );
+    await app.init();
+    prisma = app.get(PrismaService);
+
+    owner = await registerUser("bookable-owner");
+    member = await registerUser("bookable-member");
+    outsider = await registerUser("bookable-outsider");
+
+    organization = await createOrganization(owner, "primary");
+    secondOrganization = await createOrganization(owner, "secondary");
+    outsiderOrganization = await createOrganization(outsider, "outsider");
+    await addMember(owner, organization.id, member.id);
+  });
+
+  afterAll(async () => {
+    try {
+      if (bookableIds.length > 0) {
+        await prisma.bookable.deleteMany({
+          where: { id: { in: bookableIds } },
+        });
+      }
+      if (organizationIds.length > 0) {
+        await prisma.organization.deleteMany({
+          where: { id: { in: organizationIds } },
+        });
+      }
+      if (userIds.length > 0) {
+        await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+      }
+    } finally {
+      await app?.close();
+    }
+  });
+
+  it("creates a Bookable for an authenticated member with DRAFT default status", async () => {
+    ownerBookable = await createBookable(owner, organization.id, {
+      name: "Main Room",
+      description: "Primary reservable room",
+      slug: uniqueSlug("main-room"),
+      capacity: 4,
+    });
+    bookableIds.push(ownerBookable.id);
+
+    expect(ownerBookable.organizationId).toBe(organization.id);
+    expect(ownerBookable.status).toBe("DRAFT");
+    expect(ownerBookable.capacity).toBe(4);
+
+    memberBookable = await createBookable(member, organization.id, {
+      name: "Member Room",
+      slug: uniqueSlug("member-room"),
+      capacity: 1,
+    });
+    bookableIds.push(memberBookable.id);
+    expect(memberBookable.organizationId).toBe(organization.id);
+  });
+
+  it("rejects invalid capacity and malformed input", async () => {
+    await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Invalid Capacity",
+        slug: uniqueSlug("invalid-capacity"),
+        capacity: 0,
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Malformed Slug",
+        slug: "Not A Slug",
+        capacity: 1,
+      })
+      .expect(400);
+  });
+
+  it("rejects a duplicate global slug", async () => {
+    await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: secondOrganization.id,
+        name: "Duplicate Slug",
+        slug: ownerBookable.slug,
+        capacity: 1,
+      })
+      .expect(409);
+  });
+
+  it("allows a user with multiple organizations to create and access both organizations' Bookables", async () => {
+    secondOrganizationBookable = await createBookable(
+      owner,
+      secondOrganization.id,
+      {
+        name: "Second Organization Room",
+        slug: uniqueSlug("second-room"),
+        capacity: 2,
+      },
+    );
+    bookableIds.push(secondOrganizationBookable.id);
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/bookables/${ownerBookable.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/api/v1/bookables/${secondOrganizationBookable.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(200);
+
+    const primaryList = await request(app.getHttpServer())
+      .get(`/api/v1/bookables?organizationId=${organization.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(200);
+    expect(primaryList.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: ownerBookable.id }),
+        expect.objectContaining({ id: memberBookable.id }),
+      ]),
+    );
+    expect(primaryList.body).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: secondOrganizationBookable.id }),
+      ]),
+    );
+  });
+
+  it("does not let an unrelated user access Bookables by ID or list filter", async () => {
+    outsiderBookable = await createBookable(outsider, outsiderOrganization.id, {
+      name: "Outsider Room",
+      slug: uniqueSlug("outsider-room"),
+      capacity: 1,
+    });
+    bookableIds.push(outsiderBookable.id);
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/bookables/${ownerBookable.id}`)
+      .set("Authorization", `Bearer ${outsider.accessToken}`)
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/bookables?organizationId=${organization.id}`)
+      .set("Authorization", `Bearer ${outsider.accessToken}`)
+      .expect(404);
+
+    const list = await request(app.getHttpServer())
+      .get("/api/v1/bookables")
+      .set("Authorization", `Bearer ${outsider.accessToken}`)
+      .expect(200);
+    expect(list.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: outsiderBookable.id }),
+      ]),
+    );
+    expect(list.body).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: ownerBookable.id }),
+      ]),
+    );
+  });
+
+  it("allows OWNER updates and rejects MEMBER updates", async () => {
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${ownerBookable.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({ name: "Updated Main Room", capacity: 5 })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${ownerBookable.id}`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .send({ name: "Unauthorized Update" })
+      .expect(403);
+  });
+
+  it("archives a Bookable without deleting it and rejects unauthorized archive attempts", async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${ownerBookable.id}/archive`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(403);
+
+    const response = await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${ownerBookable.id}/archive`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201);
+
+    expect(response.body.status).toBe("ARCHIVED");
+    await expect(
+      prisma.bookable.findUnique({ where: { id: ownerBookable.id } }),
+    ).resolves.toEqual(expect.objectContaining({ status: "ARCHIVED" }));
+  });
+
+  it("rejects unauthenticated Bookable requests", async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/bookables/${ownerBookable.id}`)
+      .expect(401);
+    await request(app.getHttpServer()).get("/api/v1/bookables").expect(401);
+  });
+
+  async function registerUser(label: string): Promise<UserSession> {
+    const response = await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({
+        email: `${label}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`,
+        password: "correct-horse-battery-staple",
+        name: label,
+      })
+      .expect(201);
+
+    const user = {
+      id: response.body.user.id as string,
+      accessToken: response.body.accessToken as string,
+    };
+    userIds.push(user.id);
+    return user;
+  }
+
+  async function createOrganization(
+    user: UserSession,
+    suffix: string,
+  ): Promise<OrganizationRecord> {
+    const response = await request(app.getHttpServer())
+      .post("/api/v1/organizations")
+      .set("Authorization", `Bearer ${user.accessToken}`)
+      .send({
+        name: `${suffix} organization`,
+        slug: uniqueSlug(suffix),
+        timezone: "Africa/Lagos",
+      })
+      .expect(201);
+
+    const organization = response.body as OrganizationRecord;
+    organizationIds.push(organization.id);
+    return organization;
+  }
+
+  async function addMember(
+    user: UserSession,
+    organizationId: string,
+    memberId: string,
+  ): Promise<void> {
+    await request(app.getHttpServer())
+      .post(`/api/v1/organizations/${organizationId}/members`)
+      .set("Authorization", `Bearer ${user.accessToken}`)
+      .send({ userId: memberId })
+      .expect(201);
+  }
+
+  async function createBookable(
+    user: UserSession,
+    organizationId: string,
+    input: {
+      name: string;
+      description?: string;
+      slug: string;
+      capacity: number;
+    },
+  ): Promise<BookableRecord> {
+    const response = await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${user.accessToken}`)
+      .send({ organizationId, ...input })
+      .expect(201);
+
+    return response.body as BookableRecord;
+  }
+});
+
+function uniqueSlug(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
