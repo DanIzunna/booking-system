@@ -9,5 +9,6 @@ import { ReservationsService } from "./reservations.service";
   imports: [PrismaModule, AuthModule, AvailabilityModule],
   controllers: [ReservationsController],
   providers: [ReservationsService],
+  exports: [ReservationsService],
 })
 export class ReservationsModule {}

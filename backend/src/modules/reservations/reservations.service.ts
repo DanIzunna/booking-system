@@ -22,6 +22,8 @@ const reservationSelect = {
   startAt: true,
   endAt: true,
   quantity: true,
+  amount: true,
+  currency: true,
   status: true,
   expiresAt: true,
   updatedAt: true,
@@ -110,10 +112,49 @@ export class ReservationsService {
           startAt: requested.startAt,
           endAt,
           quantity: input.quantity,
+          amount: input.quantity * bookable.price,
+          currency: bookable.currency,
           status: ReservationStatus.PENDING,
         },
         select: reservationSelect,
       });
+    });
+  }
+
+  async confirmFromPayment(
+    transaction: Prisma.TransactionClient,
+    reservationId: string,
+  ) {
+    const reservation = await transaction.reservation.findUnique({
+      where: { id: reservationId },
+      select: { id: true, status: true, expiresAt: true },
+    });
+    if (!reservation) throw new NotFoundException("Reservation not found");
+    if (reservation.status === ReservationStatus.CONFIRMED) return reservation;
+    if (reservation.status !== ReservationStatus.PENDING) {
+      throw new ConflictException("Reservation cannot be confirmed");
+    }
+    if (reservation.expiresAt && reservation.expiresAt <= new Date()) {
+      throw new ConflictException("Reservation has expired");
+    }
+    return transaction.reservation.update({
+      where: { id: reservationId },
+      data: { status: ReservationStatus.CONFIRMED },
+      select: reservationSelect,
+    });
+  }
+
+  async confirmFreeReservation(customerId: string, reservationId: string) {
+    return this.prisma.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: { id: reservationId, customerId },
+        select: { id: true, amount: true, status: true, expiresAt: true },
+      });
+      if (!reservation) throw new NotFoundException("Reservation not found");
+      if (reservation.amount !== 0) {
+        throw new ConflictException("Reservation requires payment");
+      }
+      return this.confirmFromPayment(transaction, reservationId);
     });
   }
 

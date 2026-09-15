@@ -101,6 +101,8 @@ model Bookable {
   slug              String                    @unique @db.VarChar(160)
   status            BookableStatus             @default(DRAFT)
   capacity          Int
+  price             Int                       @default(0)
+  currency          String                    @default("NGN") @db.Char(3)
   createdAt         DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime                  @updatedAt @db.Timestamptz(3)
   organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
@@ -165,6 +167,8 @@ model Reservation {
   startAt    DateTime          @db.Timestamptz(3)
   endAt      DateTime          @db.Timestamptz(3)
   quantity   Int
+  amount     Int               @default(0)
+  currency   String            @default("NGN") @db.Char(3)
   status     ReservationStatus @default(PENDING)
   expiresAt  DateTime?         @db.Timestamptz(3)
   createdAt  DateTime          @default(now()) @db.Timestamptz(3)
@@ -183,9 +187,10 @@ model Payment {
   reservationId     String        @unique @db.Uuid
   provider          String        @db.VarChar(80)
   providerReference String        @db.VarChar(255)
-  amount            Decimal       @db.Decimal(18, 2)
+  amount            Int
   currency          String        @db.Char(3)
   status            PaymentStatus @default(PENDING)
+  paidAt            DateTime?     @db.Timestamptz(3)
   createdAt         DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
   reservation       Reservation   @relation(fields: [reservationId], references: [id], onDelete: Restrict)

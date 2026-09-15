@@ -6,6 +6,7 @@ import { BookablesModule } from "./modules/bookables/bookables.module";
 import { OrganizationsModule } from "./modules/organizations/organizations.module";
 import { ReservationsModule } from "./modules/reservations/reservations.module";
 import { PublicBookingModule } from "./modules/public-booking/public-booking.module";
+import { PaymentsModule } from "./modules/payments/payments.module";
 import { AvailabilityModule } from "./modules/availability/availability.module";
 
 @Module({
@@ -17,6 +18,7 @@ import { AvailabilityModule } from "./modules/availability/availability.module";
     AvailabilityModule,
     ReservationsModule,
     PublicBookingModule,
+    PaymentsModule,
     HealthModule,
   ],
 })
