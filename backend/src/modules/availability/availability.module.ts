@@ -10,5 +10,6 @@ import { AvailabilityService } from "./availability.service";
   imports: [PrismaModule, AuthModule, OrganizationsModule],
   controllers: [AvailabilityController],
   providers: [AvailabilityService, AvailabilityEngineService],
+  exports: [AvailabilityEngineService],
 })
 export class AvailabilityModule {}
