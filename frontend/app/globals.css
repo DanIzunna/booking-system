@@ -1,10 +1,11 @@
 :root {
-  --background: #f5f7fb;
-  --foreground: #101828;
-  --card-background: #ffffff;
-  --border: #dfe3ec;
-  --muted: #475467;
-  --brand: #1d4ed8;
+  --background: #f4f1eb;
+  --foreground: #1d2926;
+  --muted: #66736e;
+  --line: #d9d8d0;
+  --accent: #e86f4b;
+  --accent-dark: #b94f35;
+  --ink-soft: #34423d;
 }
 
 html {
@@ -14,9 +15,9 @@ html {
 body {
   min-height: 100%;
   margin: 0;
-  background: linear-gradient(180deg, #eef4ff 0%, #f5f7fb 100%);
+  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Georgia, "Times New Roman", serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -26,8 +27,10 @@ body {
 }
 
 main {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  padding: 24px;
+  min-height: 100svh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
