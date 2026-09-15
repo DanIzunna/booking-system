@@ -13,6 +13,7 @@ export interface SafeUser {
   email: string;
   name: string;
   createdAt: Date;
+  platformRole: "USER" | "ADMIN";
 }
 
 export interface AuthResult {

@@ -12,6 +12,11 @@ enum MembershipRole {
   MEMBER
 }
 
+enum PlatformRole {
+  USER
+  ADMIN
+}
+
 enum BookableStatus {
   DRAFT
   PUBLISHED
@@ -60,6 +65,7 @@ model User {
   email                String                @unique @db.VarChar(320)
   passwordHash         String                @db.VarChar(255)
   name                 String                @db.VarChar(200)
+  platformRole         PlatformRole         @default(USER)
   createdAt            DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
   memberships          OrganizationMembership[]

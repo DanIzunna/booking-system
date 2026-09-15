@@ -23,9 +23,13 @@ const safeUserSelect = {
   email: true,
   name: true,
   createdAt: true,
+  platformRole: true,
 } satisfies Prisma.UserSelect;
 
-type SafeUserRecord = Pick<User, "id" | "email" | "name" | "createdAt">;
+type SafeUserRecord = Pick<
+  User,
+  "id" | "email" | "name" | "createdAt" | "platformRole"
+>;
 
 @Injectable()
 export class AuthService {
@@ -58,6 +62,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       createdAt: user.createdAt,
+      platformRole: user.platformRole,
     });
   }
 
@@ -78,6 +83,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       createdAt: user.createdAt,
+      platformRole: user.platformRole,
     });
   }
 

@@ -71,6 +71,7 @@ describe("Authentication & identity (integration)", () => {
         email,
         name: "Auth Test User",
         createdAt: expect.any(String),
+        platformRole: "USER",
       },
     });
     expect(response.body.user.passwordHash).toBeUndefined();
@@ -147,6 +148,7 @@ describe("Authentication & identity (integration)", () => {
       email,
       name: "Auth Test User",
       createdAt: expect.any(String),
+      platformRole: "USER",
     });
     expect(response.body.user.passwordHash).toBeUndefined();
     expect(response.body.refreshToken).toBeUndefined();
@@ -166,6 +168,7 @@ describe("Authentication & identity (integration)", () => {
       email,
       name: "Auth Test User",
       createdAt: expect.any(String),
+      platformRole: "USER",
     });
     expect(response.body.passwordHash).toBeUndefined();
   });
