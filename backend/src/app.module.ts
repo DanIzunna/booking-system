@@ -4,6 +4,7 @@ import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BookablesModule } from "./modules/bookables/bookables.module";
 import { OrganizationsModule } from "./modules/organizations/organizations.module";
+import { AvailabilityModule } from "./modules/availability/availability.module";
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { OrganizationsModule } from "./modules/organizations/organizations.modul
     AuthModule,
     OrganizationsModule,
     BookablesModule,
+    AvailabilityModule,
     HealthModule,
   ],
 })
