@@ -25,5 +25,38 @@
 .state h1 { max-width: 680px; }
 .details { display: flex; justify-content: space-between; width: min(100%, 420px); margin-top: 36px; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font: 13px/1.4 Arial, Helvetica, sans-serif; }
 .details strong { color: var(--accent-dark); letter-spacing: .08em; text-transform: uppercase; }
+.actionLink, .primaryLink { display: inline-block; margin-top: 28px; padding: 13px 16px; background: var(--foreground); color: var(--background); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.pageHeading { display: flex; align-items: end; justify-content: space-between; gap: 28px; }
+.primaryLink { margin-top: 0; white-space: nowrap; }
+.bookableList { display: grid; gap: 12px; margin-top: 34px; }
+.bookable { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; border: 1px solid var(--line); background: #fbfaf7; }
+.bookable:hover, .actionLink:hover, .primaryLink:hover { border-color: var(--accent); }
+.bookable strong, .bookable small { display: block; }
+.bookable strong { font-size: 18px; font-weight: 400; }
+.bookable small { margin-top: 5px; color: var(--muted); font: 13px/1.5 Arial, Helvetica, sans-serif; }
+.bookableMeta { display: flex; gap: 18px; color: var(--muted); font: 12px/1.4 Arial, Helvetica, sans-serif; text-align: right; text-transform: uppercase; }
+.statusLabel { color: var(--accent-dark); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.description { max-width: 580px; margin-top: 34px; color: var(--ink-soft); font: 16px/1.7 Arial, Helvetica, sans-serif; white-space: pre-wrap; }
+.formPage { max-width: 620px; padding: clamp(70px, 12vw, 150px) clamp(24px, 8vw, 120px); }
+.formPage h1 { margin: 0; font-size: clamp(48px, 8vw, 76px); font-weight: 400; letter-spacing: -.045em; line-height: .95; }
+.bookableForm { display: grid; gap: 18px; margin-top: 34px; }
+.formField { display: grid; gap: 8px; color: var(--ink-soft); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .04em; }
+.formField input, .formField textarea { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 0; background: white; color: var(--foreground); font: 16px/1.4 Arial, Helvetica, sans-serif; }
+.formField textarea { resize: vertical; }
+.formField small { color: var(--muted); font: 12px/1.4 Arial, Helvetica, sans-serif; letter-spacing: 0; }
+.formField input:focus, .formField textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primaryButton, .secondaryButton, .dangerButton { min-height: 44px; padding: 12px 16px; border: 1px solid var(--foreground); border-radius: 0; cursor: pointer; font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+.primaryButton { background: var(--foreground); color: var(--background); }
+.secondaryButton { background: transparent; color: var(--foreground); }
+.dangerButton { border-color: var(--accent-dark); background: transparent; color: var(--accent-dark); }
+.primaryButton:disabled, .secondaryButton:disabled, .dangerButton:disabled { cursor: wait; opacity: .55; }
+.actionRow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.state { margin-top: 10px; }
+
+@media (max-width: 620px) {
+	.pageHeading { align-items: start; flex-direction: column; }
+	.bookable { align-items: start; flex-direction: column; }
+	.bookableMeta { text-align: left; }
+}
 
 button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }

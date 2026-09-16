@@ -94,7 +94,8 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
               <span>Your membership</span>
               <strong>{role ?? "Unavailable"}</strong>
             </div>
-            <p className={styles.note}>Bookables and availability will appear here in a later phase.</p>
+            <p className={styles.note}>Manage the resources that can later be reserved in this organization.</p>
+            <Link className={styles.actionLink} href={`/organizations/${organizationId}/bookables`}>Bookables</Link>
           </section>
         )}
       </section>
