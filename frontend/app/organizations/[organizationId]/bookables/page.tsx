@@ -11,6 +11,7 @@ import { useSession } from "../../../../lib/auth/session-provider";
 import type { Bookable } from "../../../../types/bookables";
 import type { Organization } from "../../../../types/organizations";
 import styles from "../../../dashboard.module.css";
+import { AppHeader } from "../../../../components/layout/app-header";
 
 interface BookablesPageProps {
   params: Promise<{ organizationId: string }>;
@@ -19,7 +20,7 @@ interface BookablesPageProps {
 export default function BookablesPage({ params }: BookablesPageProps) {
   const { organizationId } = use(params);
   const router = useRouter();
-  const { status, user, logout } = useSession();
+  const { status, user } = useSession();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [bookables, setBookables] = useState<Bookable[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -52,16 +53,11 @@ export default function BookablesPage({ params }: BookablesPageProps) {
     };
   }, [organizationId, status]);
 
-  if (status === "loading") return <main className={styles.page}><p className={styles.message}>Checking your session...</p></main>;
+  if (status === "loading") return <main className="min-h-screen bg-slate-50 p-10 text-sm text-slate-500">Checking your session...</main>;
   if (!user) return null;
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <Link className={styles.logo} href="/">Booking System</Link>
-        <button className={styles.signOut} type="button" onClick={() => void logout()}>Sign out</button>
-      </header>
-      <section className={styles.content}>
+    <div className="min-h-screen bg-slate-50"><AppHeader /><main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <Link className={styles.backLink} href={`/organizations/${organizationId}`}>Back to organization</Link>
         {loading && <p className={styles.message}>Loading bookables...</p>}
         {!loading && errorStatus === 403 && <ErrorState title="Access denied" message="You do not have permission to view these bookables." />}
@@ -91,8 +87,7 @@ export default function BookablesPage({ params }: BookablesPageProps) {
             )}
           </>
         )}
-      </section>
-    </main>
+      </main></div>
   );
 }
 

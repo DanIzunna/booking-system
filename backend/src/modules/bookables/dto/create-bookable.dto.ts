@@ -33,12 +33,16 @@ export class CreateBookableDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: "main-conference-room" })
+  @ApiPropertyOptional({
+    example: "main-conference-room",
+    description: "Generated from name when omitted",
+  })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(160)
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-  slug!: string;
+  slug?: string;
 
   @ApiPropertyOptional({ enum: BookableStatus, default: BookableStatus.DRAFT })
   @IsOptional()

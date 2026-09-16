@@ -154,6 +154,33 @@ describe("Bookables (integration)", () => {
       .expect(409);
   });
 
+  it("generates a unique slug from the name when slug is omitted", async () => {
+    const first = await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Generated Conference Room",
+        capacity: 1,
+      })
+      .expect(201);
+    bookableIds.push(first.body.id);
+
+    const second = await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Generated Conference Room",
+        capacity: 1,
+      })
+      .expect(201);
+    bookableIds.push(second.body.id);
+
+    expect(first.body.slug).toBe("generated-conference-room");
+    expect(second.body.slug).toBe("generated-conference-room-2");
+  });
+
   it("allows a user with multiple organizations to create and access both organizations' Bookables", async () => {
     secondOrganizationBookable = await createBookable(
       owner,

@@ -1,36 +1,20 @@
-:root {
-  --background: #f4f1eb;
-  --foreground: #1d2926;
-  --muted: #66736e;
-  --line: #d9d8d0;
-  --accent: #e86f4b;
-  --accent-dark: #b94f35;
-  --ink-soft: #34423d;
-}
+@import "tailwindcss";
 
-html {
-  height: 100%;
-}
+@font-face { font-family: "Manrope"; src: url("/fonts/manrope-latin.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/fonts/manrope-latin.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/fonts/manrope-latin.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/fonts/manrope-latin.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
 
-body {
-  min-height: 100%;
-  margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Georgia, "Times New Roman", serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+:root { --background: #f4f4f5; --foreground: #09090b; --muted: #71717a; --line: #e4e4e7; --accent: #09090b; --accent-dark: #27272a; --ink-soft: #52525b; }
+:root { --color-teal-50: #f4f4f5; --color-teal-300: #a1a1aa; --color-teal-400: #71717a; --color-teal-500: #52525b; --color-teal-700: #09090b; --color-teal-800: #27272a; }
+* { box-sizing: border-box; }
+html { min-width: 320px; scroll-behavior: smooth; }
+body { min-height: 100%; margin: 0; background: var(--background); color: var(--foreground); font-family: "Manrope", sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+button, input, textarea, select { font: inherit; }
+main { min-height: 100svh; }
 
-* {
-  box-sizing: border-box;
-}
-
-main {
-  min-height: 100svh;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
+main > nav + section h1 { font-size: clamp(2.625rem, 5vw, 3rem); line-height: 1.05; letter-spacing: -0.04em; }
+main > nav + section > div > div:last-child { background: #18181b; }
+main > nav + section a.bg-teal-700 { background: #09090b; color: #fff; }
+main > nav + section a.bg-teal-700:hover { background: #27272a; }

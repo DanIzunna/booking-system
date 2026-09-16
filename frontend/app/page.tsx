@@ -1,33 +1,34 @@
-import styles from "./page.module.css";
+import Link from "next/link";
+import { ArrowRight, CalendarDays, Check, ChevronRight, ClipboardList, Clock3, Layers3, Share2, UsersRound } from "lucide-react";
+import { PublicHeader } from "../components/layout/public-header";
+import { SiteFooter } from "../components/layout/site-footer";
+
+const steps = [
+  { icon: Layers3, title: "Create", text: "Turn a service, space, event, or resource into a bookable." },
+  { icon: Clock3, title: "Set availability", text: "Define recurring hours, specific windows, and exceptions." },
+  { icon: Share2, title: "Share", text: "Give customers a direct path to the right booking page." },
+  { icon: ClipboardList, title: "Receive reservations", text: "Keep capacity and upcoming bookings in one workspace." },
+];
+
+const examples = ["Appointments", "Meeting rooms", "Events", "Classes", "Workshops", "Equipment and resources"];
 
 export default function Home() {
   return (
-    <main className={styles.page}>
-      <section className={styles.hero}>
-        <div className={styles.brandMark} aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <p className={styles.eyebrow}>Booking infrastructure, made clear</p>
-        <h1>Make time<br />worth reserving.</h1>
-        <p className={styles.description}>
-          A calm, reliable place to publish resources, manage availability, and
-          help customers book the moments that matter.
-        </p>
-        <div className={styles.actions}>
-          <a className={styles.primaryAction} href="/login">
-            Sign in <span aria-hidden="true">↗</span>
-          </a>
-          <a className={styles.secondaryAction} href="/book/demo">
-            Explore public booking
-          </a>
-        </div>
-        <div className={styles.footerNote}>
-          <span className={styles.statusDot} />
-          Built for organizations, ready for customers
-        </div>
-      </section>
+    <main className="bg-slate-50 text-slate-950">
+      <PublicHeader />
+
+      <section className="border-b border-slate-200 bg-white"><div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 md:grid-cols-[1.1fr_.9fr] md:items-center md:py-28 lg:px-8"><div><p className="mb-5 text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Booking infrastructure for real-world organizations</p><h1 className="max-w-3xl text-5xl font-bold tracking-[-0.05em] text-slate-950 sm:text-7xl">Make your services, spaces, and resources bookable.</h1><p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">Create the things people can reserve, set when they are available, and share a clear booking path with your customers.</p><div className="mt-9 flex flex-wrap gap-3"><Link className="inline-flex items-center gap-2 rounded-md bg-teal-700 px-5 py-3.5 text-sm font-semibold text-white hover:bg-teal-800" href="/register">Create your workspace <ArrowRight className="size-4" /></Link><a className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="#how-it-works">See how it works <ChevronRight className="size-4" /></a></div></div><div className="rounded-xl border border-slate-200 bg-slate-950 p-5 shadow-xl shadow-slate-200/60"><div className="flex items-center justify-between border-b border-slate-800 pb-4 text-xs text-slate-400"><span>Workspace overview</span><span className="rounded-full bg-teal-400/10 px-2 py-1 text-teal-300">Live model</span></div><div className="space-y-3 py-5"><div className="rounded-lg border border-slate-800 bg-slate-900 p-4"><p className="text-xs text-slate-400">Bookable resource</p><p className="mt-1 text-lg font-semibold text-white">Consultation room</p><div className="mt-4 flex items-center justify-between text-xs text-slate-400"><span>Mon–Fri · 09:00–17:00</span><span className="text-teal-300">Capacity 1</span></div></div><div className="grid grid-cols-2 gap-3"><div className="rounded-lg border border-slate-800 p-4"><CalendarDays className="size-4 text-teal-300" /><p className="mt-3 text-sm font-semibold text-white">Availability</p><p className="mt-1 text-xs text-slate-500">Configured</p></div><div className="rounded-lg border border-slate-800 p-4"><UsersRound className="size-4 text-teal-300" /><p className="mt-3 text-sm font-semibold text-white">Capacity</p><p className="mt-1 text-xs text-slate-500">Under control</p></div></div></div></div></div></section>
+
+      <section id="how-it-works" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">A simple operating model</p><h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">From an idea to a reservation.</h2></div><div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-4">{steps.map(({ icon: Icon, title, text }, index) => <div className="bg-white p-6" key={title}><div className="flex items-center justify-between"><Icon className="size-5 text-teal-700" /><span className="text-xs font-bold text-slate-400">0{index + 1}</span></div><h3 className="mt-12 font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-500">{text}</p></div>)}</div></section>
+
+      <section className="border-y border-slate-200 bg-white"><div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 md:grid-cols-2 lg:px-8"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Generic by design</p><h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">What can be booked?</h2><p className="mt-5 max-w-md leading-7 text-slate-600">One model for the things your organization makes available. No marketplace, no category restrictions, just a clear resource and its availability.</p></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{examples.map((example) => <div className="flex min-h-24 items-end rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-800" key={example}>{example}</div>)}</div></div></section>
+
+      <section id="organizations" className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 md:grid-cols-[.8fr_1.2fr] md:items-center lg:px-8"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">For organizations</p><h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A workspace for the work behind every booking.</h2><p className="mt-5 leading-7 text-slate-600">Create resources, define availability, control capacity, and keep reservations connected to the organization that owns them.</p><ul className="mt-7 space-y-3 text-sm text-slate-700">{["Create a workspace", "Create bookables", "Set availability", "Control capacity", "Manage reservations"].map((item) => <li className="flex items-center gap-3" key={item}><Check className="size-4 text-teal-700" />{item}</li>)}</ul></div><div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between border-b border-slate-100 pb-4"><span className="font-semibold">Operations</span><span className="text-xs text-slate-400">Your workspace</span></div><div className="mt-5 space-y-3">{["Consultation room", "Saturday workshop", "Team studio"].map((item, index) => <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4" key={item}><div><p className="text-sm font-semibold">{item}</p><p className="mt-1 text-xs text-slate-500">{index === 1 ? "Specific availability" : "Recurring availability"}</p></div><span className="text-xs font-bold uppercase tracking-wider text-teal-700">{index === 2 ? "Draft" : "Ready"}</span></div>)}</div></div></section>
+
+      <section id="customers" className="border-y border-slate-200 bg-slate-900 text-white"><div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 md:grid-cols-2 md:items-center lg:px-8"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-300">For customers</p><h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A direct path to the right time.</h2><p className="mt-5 max-w-lg leading-7 text-slate-300">Organizations can share a booking page directly. Customers choose an available resource and time, then reserve without navigating a marketplace.</p></div><div className="grid gap-3 sm:grid-cols-3">{["Open a shared page", "Choose a time", "Reserve"].map((item, index) => <div className="border border-slate-700 p-4" key={item}><span className="text-xs text-teal-300">0{index + 1}</span><p className="mt-10 text-sm font-semibold">{item}</p></div>)}</div></div></section>
+
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="flex flex-col justify-between gap-8 rounded-xl bg-teal-700 px-6 py-10 text-white sm:flex-row sm:items-center sm:px-10"><div><h2 className="text-2xl font-bold tracking-tight">Ready to make something bookable?</h2><p className="mt-2 text-teal-50">Start with a workspace and build from there.</p></div><Link className="inline-flex items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-sm font-semibold text-teal-800 hover:bg-teal-50" href="/register">Create your workspace <ArrowRight className="size-4" /></Link></div></section>
+      <SiteFooter />
     </main>
   );
 }

@@ -1,60 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../lib/api/client";
 import { useSession } from "../../lib/auth/session-provider";
-import styles from "../auth.module.css";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useSession();
+  const { status, register } = useSession();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => { if (status === "authenticated") router.replace("/dashboard"); }, [router, status]);
+  if (status === "loading" || status === "authenticated") return <main className="grid min-h-screen place-items-center bg-zinc-50 text-sm text-zinc-500">Checking your session...</main>;
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setSubmitting(true);
-    try {
-      await register({ name, email, password });
-      router.push("/dashboard");
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : "Unable to create your account. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+    event.preventDefault(); setError(""); setSubmitting(true);
+    try { await register({ name, email, password }); router.push("/dashboard"); }
+    catch (caught) { setError(caught instanceof ApiError ? caught.message : "Unable to create your account. Please try again."); }
+    finally { setSubmitting(false); }
   }
 
-  return (
-    <main className={styles.page}>
-      <section className={styles.panel}>
-        <Link className={styles.back} href="/">Booking System</Link>
-        <p className={styles.eyebrow}>Start booking clearly</p>
-        <h1 className={styles.title}>Create an account.</h1>
-        <p className={styles.subtitle}>One account for the places and reservations that matter to you.</p>
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <label className={styles.field} htmlFor="name">
-            Name
-            <input className={styles.input} id="name" type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required />
-          </label>
-          <label className={styles.field} htmlFor="email">
-            Email
-            <input className={styles.input} id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          </label>
-          <label className={styles.field} htmlFor="password">
-            Password
-            <input className={styles.input} id="password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required />
-          </label>
-          {error && <p className={styles.error} role="alert">{error}</p>}
-          <button className={styles.button} type="submit" disabled={submitting}>{submitting ? "Creating account..." : "Create account"}</button>
-        </form>
-        <p className={styles.switch}>Already have an account? <Link href="/login">Sign in</Link></p>
-      </section>
-    </main>
-  );
+  return <main className="min-h-screen bg-zinc-100 px-4 py-10 sm:px-6"><div className="mx-auto max-w-md"><Link href="/" className="flex items-center gap-2 text-sm font-bold text-zinc-950"><span className="grid size-8 place-items-center rounded-lg bg-zinc-950 text-white">B</span> Bookable</Link><section className="mt-10 rounded-2xl border border-zinc-200 bg-white p-6 sm:p-8"><p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">Create your account</p><h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-950">Start with a workspace</h1><p className="mt-2 text-sm leading-6 text-zinc-500">Create resources, set availability, and share a clear booking path</p><form className="mt-7 grid gap-5" onSubmit={handleSubmit}><div className="space-y-2"><Label htmlFor="name">Name</Label><Input id="name" type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required /></div><div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div><div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required /></div>{error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p>}<Button className="w-full" type="submit" disabled={submitting}>{submitting ? "Creating account..." : "Create account"}</Button></form><p className="mt-6 text-center text-sm text-zinc-500">Already have an account? <Link className="font-semibold text-zinc-950 underline underline-offset-4" href="/login">Sign in</Link></p></section></div></main>;
 }

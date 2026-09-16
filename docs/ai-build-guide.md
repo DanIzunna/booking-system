@@ -27,7 +27,339 @@ The engineering specification contains the approved decisions for:
 - use cases
 - requirements
 - business rules
-- domain model
+- domain modelImplement **Frontend Phase 1 (F1): Authentication UI + Session State + Initial Application Shell** for the booking-system project.
+
+Project root:
+
+`C:\Users\Frost❄\Desktop\booking-system`
+
+Read these files first before making changes:
+
+- `docs/engineering-spec.md`
+- `docs/ai-build-guide.md`
+- `docs/phases/phase-02-authentication.md`
+- `frontend/lib/api/client.ts`
+- `frontend/lib/api/auth.ts`
+- `frontend/lib/auth/session.ts`
+- `frontend/types/auth.ts`
+- `frontend/app/layout.tsx`
+- `frontend/app/globals.css`
+
+The backend authentication system is already implemented and tested.
+
+Backend auth endpoints:
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+GET  /api/v1/auth/me
+```
+
+The frontend API client already provides:
+
+- `credentials: "include"`
+- in-memory access-token storage
+- Bearer Authorization
+- automatic one-shot 401 refresh
+- concurrency-safe refresh coordination
+- normalized `ApiError`
+- no persistent access-token storage
+
+Do NOT redesign that infrastructure unless you discover a concrete correctness issue.
+
+Do NOT modify the backend.
+
+Do NOT install packages.
+
+Do NOT commit anything.
+
+---
+
+# F1 goals
+
+Implement:
+
+1. Login page
+2. Registration page
+3. Minimal client-side session state
+4. Session initialization using the refresh cookie + `/auth/me`
+5. Protected dashboard placeholder
+6. Basic authenticated application shell
+7. Logout flow
+
+Do not implement organizations, bookables, availability, reservations, payments, or admin functionality yet.
+
+---
+
+# 1. Session state
+
+Create a small React session provider/hook.
+
+The provider should expose something conceptually like:
+
+```ts
+{
+  status: "loading" | "authenticated" | "unauthenticated";
+  user: AuthenticatedUser | null;
+  refreshSession: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+```
+
+Keep this deliberately small.
+
+Important architecture:
+
+- The React provider is NOT the access-token store.
+- `frontend/lib/auth/session.ts` remains the source of truth for the in-memory access token.
+- Never put the access token in React state just for storage.
+- Never put the refresh token in React state.
+- Never use localStorage/sessionStorage for authentication.
+- The refresh token remains browser-managed through the HTTP-only cookie.
+
+---
+
+# 2. Session initialization
+
+When the provider mounts in the browser:
+
+1. Start in `loading`.
+2. Attempt to establish the authenticated session.
+3. Use the existing auth API functions.
+4. The refresh cookie should allow the backend to issue a new access token when necessary.
+5. Once authenticated, obtain the current user.
+6. Set the provider to `authenticated`.
+7. If authentication cannot be established, clear the in-memory access token and set `unauthenticated`.
+
+Avoid unnecessary duplicate refresh requests.
+
+Do not make the low-level API client responsible for redirects.
+
+The provider/higher-level UI may decide where an unauthenticated user should go.
+
+Be careful about React development Strict Mode causing effects to run more than once. Do not introduce a refresh loop.
+
+---
+
+# 3. Login
+
+Create:
+
+`frontend/app/login/page.tsx`
+
+Requirements:
+
+- email
+- password
+- submit button
+- loading state
+- useful API error display
+- accessible labels
+- disabled submit while submitting
+- link to registration
+- restrained visual design consistent with the existing landing page
+
+On success:
+
+1. call `login()`
+2. update the session provider/user state
+3. navigate to `/dashboard`
+
+Do not manually manipulate tokens in the page.
+
+Do not duplicate authentication logic that belongs in `auth.ts` or the session provider.
+
+---
+
+# 4. Registration
+
+Create:
+
+`frontend/app/register/page.tsx`
+
+Fields:
+
+- name
+- email
+- password
+
+Requirements:
+
+- accessible labels
+- loading state
+- API error display
+- link to login
+- consistent styling
+
+On success:
+
+1. call `register()`
+2. update the session state
+3. navigate to `/dashboard`
+
+Do not add email verification, password reset, social login, MFA, or other functionality.
+
+---
+
+# 5. Protected dashboard
+
+Create:
+
+`frontend/app/dashboard/page.tsx`
+
+This is only an authenticated placeholder at this stage.
+
+It should:
+
+- consume the session provider
+- show a loading state while authentication is being established
+- redirect unauthenticated users to `/login`
+- display the authenticated user's name/email
+- display their platform role
+- provide a logout action
+
+Do not build dashboard statistics, organization management, booking management, etc. yet.
+
+---
+
+# 6. Application shell
+
+Create a small reusable authenticated shell/navigation component only if useful.
+
+For example:
+
+```text
+Dashboard
+Account
+Sign out
+```
+
+Keep it intentionally minimal.
+
+Do not build the complete future navigation tree.
+
+Do not add links to routes that do not exist yet except where there is a clear placeholder purpose.
+
+---
+
+# 7. Root landing page
+
+Update the existing root page only if necessary.
+
+The current landing page already has:
+
+- `/login`
+- `/book/demo`
+
+Keep the existing visual direction.
+
+Do NOT build `/book/demo` during F1.
+
+Do not turn the landing page into a marketing website.
+
+---
+
+# 8. Client/server boundaries
+
+Be deliberate about Next.js App Router boundaries.
+
+Pages that require browser interaction/session state should be client components where necessary.
+
+Do not mark the entire application or `layout.tsx` as `"use client"` merely for convenience.
+
+Keep static/server-renderable components as Server Components whenever possible.
+
+---
+
+# 9. Error handling
+
+Use the existing `ApiError`.
+
+Do not expose raw stack traces or internal backend details.
+
+For validation errors, display useful human-readable messages.
+
+Do not swallow errors silently.
+
+---
+
+# 10. Styling
+
+Continue using the existing:
+
+- global CSS
+- CSS Modules
+
+Do NOT add Tailwind.
+Do NOT add a UI component library.
+Do NOT add a state-management library.
+
+Keep the UI responsive and restrained.
+
+Do not spend excessive time polishing visual details at this phase.
+
+---
+
+# 11. Scope restrictions
+
+Do NOT implement:
+
+- organizations
+- organization memberships
+- bookables
+- availability
+- reservations
+- payments
+- platform-admin UI
+- public booking
+- account management beyond what is required for the session
+- password reset
+- email verification
+- OAuth/social login
+- persistent token storage
+- Redux/Zustand
+- middleware-based authorization unless you can demonstrate it is necessary for this phase
+
+---
+
+# 12. Validation
+
+After implementation run:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+cd ..
+git diff --check
+```
+
+Then inspect:
+
+```bash
+git status --short
+```
+
+Also check that no package files changed and no backend files changed.
+
+Report:
+
+1. exact files created
+2. exact files modified
+3. how session initialization works
+4. how login/register update session state
+5. how protected dashboard redirects unauthenticated users
+6. how logout works
+7. where the access token is stored
+8. whether refresh tokens are exposed to JavaScript
+9. client/server component boundaries
+10. validation results
+11. any architectural concerns or tradeoffs
+
+Do NOT commit.
+
 - architecture
 - modules
 - database

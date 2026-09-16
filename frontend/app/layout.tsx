@@ -3,8 +3,8 @@ import { SessionProvider } from "../lib/auth/session-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Booking System | Reserve with confidence",
-  description: "A focused booking platform for organizations and their customers.",
+  title: "Bookable | Make anything bookable",
+  description: "Create bookable resources, define availability, and share a booking page.",
 };
 
 export default function RootLayout({

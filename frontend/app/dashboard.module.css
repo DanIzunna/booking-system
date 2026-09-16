@@ -1,62 +1,60 @@
-.page { min-height: 100svh; background: var(--background); }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 26px clamp(24px, 6vw, 84px); border-bottom: 1px solid var(--line); font-family: Arial, Helvetica, sans-serif; }
-.logo { color: var(--foreground); font-size: 14px; font-weight: 700; }
-.signOut { border: 0; background: transparent; color: var(--muted); cursor: pointer; font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
-.content { max-width: 760px; padding: clamp(70px, 12vw, 150px) clamp(24px, 8vw, 120px); }
-.eyebrow { margin: 0 0 16px; color: var(--accent-dark); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
-.content h1 { margin: 0; font-size: clamp(48px, 8vw, 88px); font-weight: 400; letter-spacing: -.045em; line-height: .95; }
-.email { color: var(--muted); font: 16px/1.5 Arial, Helvetica, sans-serif; }
-.status { display: inline-block; margin-top: 28px; padding: 13px 16px; border: 1px solid var(--line); color: var(--ink-soft); font: 13px/1.3 Arial, Helvetica, sans-serif; }
-.note { max-width: 430px; margin-top: 70px; color: var(--muted); font: 15px/1.7 Arial, Helvetica, sans-serif; }
-.organizations { margin-top: 68px; }
-.sectionLabel { margin: 0 0 10px; color: var(--accent-dark); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
-.organizations h2 { margin: 0; font-size: 30px; font-weight: 400; letter-spacing: -.03em; }
-.message { max-width: 500px; color: var(--muted); font: 15px/1.7 Arial, Helvetica, sans-serif; }
-.error { max-width: 500px; padding: 12px; border-left: 3px solid var(--accent); background: #f9e2da; color: #8d321f; font: 13px/1.5 Arial, Helvetica, sans-serif; }
-.organizationList { display: grid; gap: 12px; margin-top: 26px; }
-.organization { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; border: 1px solid var(--line); background: #fbfaf7; transition: border-color 160ms ease, transform 160ms ease; }
-.organization:hover { border-color: var(--accent); transform: translateX(4px); }
-.organization strong, .organization small { display: block; }
-.organization strong { font-size: 18px; font-weight: 400; }
-.organization small, .role, .slug { color: var(--muted); font: 13px/1.5 Arial, Helvetica, sans-serif; }
-.organization small { margin-top: 5px; }
-.role { color: var(--accent-dark); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.backLink { display: inline-block; margin-bottom: 54px; color: var(--accent-dark); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.page { min-height: 100svh; background: #f4f4f5; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 18px clamp(16px, 4vw, 32px); border-bottom: 1px solid #e4e4e7; background: #fff; }
+.logo { color: #09090b; font-size: 14px; font-weight: 700; }
+.signOut { border: 0; background: transparent; color: #71717a; cursor: pointer; font: 600 13px/1 Manrope, Arial, sans-serif; }
+.content { max-width: 1100px; padding: 32px clamp(16px, 4vw, 32px); margin: 0 auto; }
+.eyebrow, .sectionLabel { margin: 0 0 10px; color: #71717a; font: 700 11px/1 Manrope, Arial, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.content h1 { margin: 0; color: #09090b; font-size: 28px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; }
+.email, .message, .note { color: #71717a; font: 14px/1.65 Manrope, Arial, sans-serif; }
+.status { display: inline-flex; margin-top: 18px; padding: 7px 11px; border: 1px solid #e4e4e7; border-radius: 999px; color: #52525b; font: 600 12px/1.3 Manrope, Arial, sans-serif; }
+.note { max-width: 560px; margin-top: 28px; }
+.organizations { margin-top: 32px; }
+.organizations h2, .availabilitySection h2 { margin: 0; color: #09090b; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+.error { max-width: 620px; padding: 12px; border: 1px solid #fca5a5; border-radius: 12px; background: #fee2e2; color: #991b1b; font: 13px/1.5 Manrope, Arial, sans-serif; }
+.organizationList, .bookableList { display: grid; gap: 12px; margin-top: 20px; }
+.organization, .bookable { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fff; transition: border-color 150ms ease, box-shadow 150ms ease; }
+.organization:hover, .bookable:hover { border-color: #a1a1aa; box-shadow: 0 8px 24px rgb(9 9 11 / 6%); }
+.organization strong, .organization small, .bookable strong, .bookable small { display: block; }
+.organization strong, .bookable strong { color: #09090b; font-size: 15px; font-weight: 700; }
+.organization small, .bookable small, .role, .slug { color: #71717a; font: 12px/1.5 Manrope, Arial, sans-serif; }
+.organization small, .bookable small { margin-top: 4px; }
+.role, .statusLabel { color: #09090b; font: 700 11px/1 Manrope, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.backLink { display: inline-block; margin-bottom: 28px; color: #52525b; font: 600 13px/1 Manrope, Arial, sans-serif; }
+.backLink:hover { color: #09090b; }
+.state { margin-top: 32px; }
 .state h1 { max-width: 680px; }
-.details { display: flex; justify-content: space-between; width: min(100%, 420px); margin-top: 36px; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font: 13px/1.4 Arial, Helvetica, sans-serif; }
-.details strong { color: var(--accent-dark); letter-spacing: .08em; text-transform: uppercase; }
-.actionLink, .primaryLink { display: inline-block; margin-top: 28px; padding: 13px 16px; background: var(--foreground); color: var(--background); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.details { display: flex; justify-content: space-between; width: min(100%, 420px); margin-top: 24px; padding: 14px 0; border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7; color: #71717a; font: 13px/1.4 Manrope, Arial, sans-serif; }
+.details strong { color: #09090b; }
+.actionLink, .primaryLink { display: inline-flex; align-items: center; margin-top: 22px; padding: 11px 16px; border-radius: 999px; background: #09090b; color: #fff; font: 700 13px/1 Manrope, Arial, sans-serif; }
 .pageHeading { display: flex; align-items: end; justify-content: space-between; gap: 28px; }
 .primaryLink { margin-top: 0; white-space: nowrap; }
-.bookableList { display: grid; gap: 12px; margin-top: 34px; }
-.bookable { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; border: 1px solid var(--line); background: #fbfaf7; }
-.bookable:hover, .actionLink:hover, .primaryLink:hover { border-color: var(--accent); }
-.bookable strong, .bookable small { display: block; }
-.bookable strong { font-size: 18px; font-weight: 400; }
-.bookable small { margin-top: 5px; color: var(--muted); font: 13px/1.5 Arial, Helvetica, sans-serif; }
-.bookableMeta { display: flex; gap: 18px; color: var(--muted); font: 12px/1.4 Arial, Helvetica, sans-serif; text-align: right; text-transform: uppercase; }
-.statusLabel { color: var(--accent-dark); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
-.description { max-width: 580px; margin-top: 34px; color: var(--ink-soft); font: 16px/1.7 Arial, Helvetica, sans-serif; white-space: pre-wrap; }
-.formPage { max-width: 620px; padding: clamp(70px, 12vw, 150px) clamp(24px, 8vw, 120px); }
-.formPage h1 { margin: 0; font-size: clamp(48px, 8vw, 76px); font-weight: 400; letter-spacing: -.045em; line-height: .95; }
-.bookableForm { display: grid; gap: 18px; margin-top: 34px; }
-.formField { display: grid; gap: 8px; color: var(--ink-soft); font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .04em; }
-.formField input, .formField textarea { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 0; background: white; color: var(--foreground); font: 16px/1.4 Arial, Helvetica, sans-serif; }
+.bookableMeta { display: flex; gap: 18px; color: #71717a; font: 11px/1.4 Manrope, Arial, sans-serif; text-align: right; text-transform: uppercase; }
+.description { max-width: 680px; margin-top: 24px; color: #52525b; font: 14px/1.7 Manrope, Arial, sans-serif; white-space: pre-wrap; }
+.formPage { max-width: 680px; margin: 0 auto; padding: 32px 0; }
+.formPage h1 { margin: 0; color: #09090b; font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+.bookableForm, .availabilityForm { display: grid; gap: 16px; margin-top: 24px; }
+.formField { display: grid; gap: 7px; color: #52525b; font: 600 13px/1 Manrope, Arial, sans-serif; }
+.formField input, .formField textarea, .formField select, .friendlyInput { width: 100%; min-height: 40px; padding: 9px 12px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; color: #09090b; font: 13px/1.4 Manrope, Arial, sans-serif; }
 .formField textarea { resize: vertical; }
-.formField small { color: var(--muted); font: 12px/1.4 Arial, Helvetica, sans-serif; letter-spacing: 0; }
-.formField input:focus, .formField textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
-.primaryButton, .secondaryButton, .dangerButton { min-height: 44px; padding: 12px 16px; border: 1px solid var(--foreground); border-radius: 0; cursor: pointer; font: 700 12px/1 Arial, Helvetica, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
-.primaryButton { background: var(--foreground); color: var(--background); }
-.secondaryButton { background: transparent; color: var(--foreground); }
-.dangerButton { border-color: var(--accent-dark); background: transparent; color: var(--accent-dark); }
+.formField small { color: #71717a; font: 12px/1.4 Manrope, Arial, sans-serif; }
+.formField input:focus, .formField textarea:focus, .formField select:focus, .friendlyInput:focus { outline: 2px solid #d4d4d8; outline-offset: 1px; border-color: #09090b; }
+.primaryButton, .secondaryButton, .dangerButton { min-height: 40px; padding: 10px 15px; border: 1px solid #09090b; border-radius: 999px; cursor: pointer; font: 700 13px/1 Manrope, Arial, sans-serif; }
+.primaryButton { background: #09090b; color: #fff; }
+.secondaryButton { border-color: #d4d4d8; background: #fff; color: #09090b; }
+.dangerButton { border-color: #fca5a5; background: #fff; color: #991b1b; }
 .primaryButton:disabled, .secondaryButton:disabled, .dangerButton:disabled { cursor: wait; opacity: .55; }
-.actionRow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-.state { margin-top: 10px; }
-
-@media (max-width: 620px) {
-	.pageHeading { align-items: start; flex-direction: column; }
-	.bookable { align-items: start; flex-direction: column; }
-	.bookableMeta { text-align: left; }
-}
-
-button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.actionRow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.availabilitySection { margin-top: 32px; padding: 20px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fff; }
+.timezoneNote { max-width: 650px; margin-top: 18px; color: #71717a; font: 13px/1.7 Manrope, Arial, sans-serif; }
+.availabilityList { display: grid; gap: 8px; margin-top: 18px; }
+.availabilityRow { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 0; border-bottom: 1px solid #f4f4f5; color: #52525b; font: 13px/1.5 Manrope, Arial, sans-serif; }
+.availabilityRow strong, .availabilityRow small { display: block; }
+.availabilityRow strong { color: #09090b; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.availabilityRow small { margin-top: 4px; color: #71717a; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.checkAvailable, .checkUnavailable { display: grid; gap: 5px; max-width: 500px; margin-top: 18px; padding: 14px; border: 1px solid; border-radius: 12px; font: 13px/1.5 Manrope, Arial, sans-serif; }
+.checkAvailable { border-color: #bbf7d0; background: #dcfce7; color: #166534; }
+.checkUnavailable { border-color: #fca5a5; background: #fee2e2; color: #991b1b; }
+.checkAvailable small, .checkUnavailable small { font-size: 12px; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid #a1a1aa; outline-offset: 2px; }
+@media (max-width: 620px) { .pageHeading { align-items: start; flex-direction: column; } .bookable, .organization { align-items: start; flex-direction: column; } .bookableMeta { text-align: left; } .formGrid { grid-template-columns: 1fr; } }

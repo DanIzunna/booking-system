@@ -16,7 +16,6 @@ export interface CreateBookableInput {
   organizationId: string;
   name: string;
   description?: string;
-  slug: string;
   capacity: number;
 }
 

@@ -35,21 +35,28 @@ export class BookablesService {
       input.organizationId,
     );
 
-    try {
-      return await this.prisma.bookable.create({
-        data: {
-          organizationId: input.organizationId,
-          name: input.name,
-          description: input.description,
-          slug: input.slug,
-          status: input.status ?? BookableStatus.DRAFT,
-          capacity: input.capacity,
-        },
-        select: bookableSelect,
-      });
-    } catch (error) {
-      throw mapBookableError(error);
+    const baseSlug = input.slug ?? slugify(input.name);
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      try {
+        return await this.prisma.bookable.create({
+          data: {
+            organizationId: input.organizationId,
+            name: input.name,
+            description: input.description,
+            slug: attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`,
+            status: input.status ?? BookableStatus.DRAFT,
+            capacity: input.capacity,
+          },
+          select: bookableSelect,
+        });
+      } catch (error) {
+        if (!input.slug && isUniqueConstraintError(error)) continue;
+        throw mapBookableError(error);
+      }
     }
+
+    throw new ConflictException("Unable to generate a unique Bookable slug");
   }
 
   async list(userId: string, filter: ListBookablesDto) {
@@ -144,12 +151,31 @@ export class BookablesService {
 }
 
 function mapBookableError(error: unknown): never {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  ) {
+  if (isUniqueConstraintError(error)) {
     throw new ConflictException("Bookable slug is already in use");
   }
 
   throw error;
+}
+
+function isUniqueConstraintError(
+  error: unknown,
+): error is Prisma.PrismaClientKnownRequestError {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
+function slugify(value: string): string {
+  const slug = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 160)
+    .replace(/-+$/g, "");
+
+  return slug || "bookable";
 }
