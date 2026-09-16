@@ -4,7 +4,8 @@ import {
   setAccessToken,
 } from "../auth/session";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
 let refreshPromise: Promise<boolean> | null = null;
 
 export interface ApiErrorBody {
@@ -127,7 +128,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
     const errorBody = body as ApiErrorBody | undefined;
     throw new ApiError(
       response.status,
-      formatMessage(errorBody?.message) || response.statusText || "Request failed",
+      formatMessage(errorBody?.message) ||
+        response.statusText ||
+        "Request failed",
       errorBody?.details,
     );
   }

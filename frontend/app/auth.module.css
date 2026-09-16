@@ -18,7 +18,10 @@
   display: inline-block;
   margin-bottom: 48px;
   color: var(--muted);
-  font: 700 12px/1 Arial, Helvetica, sans-serif;
+  font:
+    700 12px/1 Arial,
+    Helvetica,
+    sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -26,7 +29,10 @@
 .eyebrow {
   margin: 0 0 12px;
   color: var(--accent-dark);
-  font: 700 12px/1 Arial, Helvetica, sans-serif;
+  font:
+    700 12px/1 Arial,
+    Helvetica,
+    sans-serif;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -42,7 +48,10 @@
 .subtitle {
   margin: 16px 0 30px;
   color: var(--muted);
-  font: 15px/1.6 Arial, Helvetica, sans-serif;
+  font:
+    15px/1.6 Arial,
+    Helvetica,
+    sans-serif;
 }
 
 .form {
@@ -54,7 +63,10 @@
   display: grid;
   gap: 8px;
   color: var(--ink-soft);
-  font: 700 12px/1 Arial, Helvetica, sans-serif;
+  font:
+    700 12px/1 Arial,
+    Helvetica,
+    sans-serif;
   letter-spacing: 0.04em;
 }
 
@@ -66,7 +78,10 @@
   border-radius: 0;
   background: white;
   color: var(--foreground);
-  font: 16px/1.4 Arial, Helvetica, sans-serif;
+  font:
+    16px/1.4 Arial,
+    Helvetica,
+    sans-serif;
 }
 
 .input:focus {
@@ -82,10 +97,16 @@
   background: var(--foreground);
   color: var(--background);
   cursor: pointer;
-  font: 700 14px/1 Arial, Helvetica, sans-serif;
+  font:
+    700 14px/1 Arial,
+    Helvetica,
+    sans-serif;
 }
 
-.button:disabled { cursor: wait; opacity: 0.55; }
+.button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
 
 .error {
   margin: 0;
@@ -93,19 +114,33 @@
   border-left: 3px solid var(--accent);
   background: #f9e2da;
   color: #8d321f;
-  font: 13px/1.5 Arial, Helvetica, sans-serif;
+  font:
+    13px/1.5 Arial,
+    Helvetica,
+    sans-serif;
 }
 
 .switch {
   margin: 26px 0 0;
   color: var(--muted);
-  font: 13px/1.5 Arial, Helvetica, sans-serif;
+  font:
+    13px/1.5 Arial,
+    Helvetica,
+    sans-serif;
   text-align: center;
 }
 
-.switch a { color: var(--accent-dark); font-weight: 700; }
+.switch a {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
 
 @media (max-width: 520px) {
-  .panel { padding: 30px 24px; box-shadow: 10px 10px 0 #e7e2d8; }
-  .title { font-size: 42px; }
+  .panel {
+    padding: 30px 24px;
+    box-shadow: 10px 10px 0 #e7e2d8;
+  }
+  .title {
+    font-size: 42px;
+  }
 }

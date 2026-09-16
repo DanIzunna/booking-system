@@ -1,8 +1,5 @@
 import { apiRequest } from "./client";
-import {
-  AuthenticatedUser,
-  AuthResponse,
-} from "../../types/auth";
+import { AuthenticatedUser, AuthResponse } from "../../types/auth";
 import { clearAccessToken, setAccessToken } from "../auth/session";
 
 export interface RegisterInput {

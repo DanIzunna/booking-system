@@ -14,4 +14,5 @@ export interface OrganizationMembership {
   role: MembershipRole;
 }
 
-export interface OrganizationSummary extends Organization, OrganizationMembership {}
+export interface OrganizationSummary
+  extends Organization, OrganizationMembership {}

@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("authenticated workspace, generated slug, publish redirect, and availability UX", async ({ page }) => {
+test("authenticated workspace, generated slug, publish redirect, and availability UX", async ({
+  page,
+}) => {
   const email = `playwright-${Date.now()}@example.test`;
   const organizationName = `Playwright Workspace ${Date.now()}`;
   const bookableName = "Playwright Consultation Room";
@@ -14,15 +16,19 @@ test("authenticated workspace, generated slug, publish redirect, and availabilit
 
   await page.getByRole("button", { name: /create workspace/i }).click();
   await page.getByLabel("Workspace name").fill(organizationName);
-  await page.getByLabel("Workspace address").fill(`playwright-${Date.now()}`);
   await page.getByLabel("Local timezone").selectOption("Africa/Lagos");
-  await page.locator("form").getByRole("button", { name: "Create workspace" }).click();
+  await page
+    .locator("form")
+    .getByRole("button", { name: "Create workspace" })
+    .click();
   await expect(page).toHaveURL(/\/organizations\//);
 
-  await page.getByRole("link", { name: /open bookables/i }).click();
+  await page.getByRole("link", { name: /view all/i }).click();
   await page.getByRole("link", { name: /create bookable/i }).click();
   await page.getByLabel("Name").fill(bookableName);
-  await page.getByLabel("Description").fill("A resource for browser-level workflow testing.");
+  await page
+    .getByLabel("Description")
+    .fill("A resource for browser-level workflow testing.");
   await page.getByLabel("Capacity").fill("2");
   await expect(page.getByLabel(/slug|public address/i)).toHaveCount(0);
   await page.getByRole("button", { name: "Create bookable" }).click();
@@ -34,7 +40,9 @@ test("authenticated workspace, generated slug, publish redirect, and availabilit
 
   await page.getByRole("link", { name: bookableName }).click();
   await page.getByRole("link", { name: /configure availability/i }).click();
-  await expect(page.getByText("Organization timezone", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Organization timezone", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByLabel("Day")).toBeVisible();
   await expect(page.getByLabel("Date")).toHaveCount(2);
   await expect(page.getByLabel("Duration")).toBeVisible();

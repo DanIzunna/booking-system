@@ -8,7 +8,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { getCurrentUser, login as loginRequest, logout as logoutRequest, refresh, register as registerRequest } from "../api/auth";
+import {
+  getCurrentUser,
+  login as loginRequest,
+  logout as logoutRequest,
+  refresh,
+  register as registerRequest,
+} from "../api/auth";
 import type { LoginInput, RegisterInput } from "../api/auth";
 import { clearAccessToken } from "./session";
 import type { AuthenticatedUser } from "../../types/auth";
@@ -82,7 +88,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ status, user, refreshSession, login, register, logout }}>
+    <SessionContext.Provider
+      value={{ status, user, refreshSession, login, register, logout }}
+    >
       {children}
     </SessionContext.Provider>
   );
@@ -90,6 +98,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
 export function useSession(): SessionContextValue {
   const context = useContext(SessionContext);
-  if (!context) throw new Error("useSession must be used within SessionProvider");
+  if (!context)
+    throw new Error("useSession must be used within SessionProvider");
   return context;
 }

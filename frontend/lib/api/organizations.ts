@@ -1,5 +1,8 @@
 import { apiRequest } from "./client";
-import type { Organization, OrganizationSummary } from "../../types/organizations";
+import type {
+  Organization,
+  OrganizationSummary,
+} from "../../types/organizations";
 
 export interface CreateOrganizationInput {
   name: string;
@@ -7,8 +10,13 @@ export interface CreateOrganizationInput {
   timezone: string;
 }
 
-export function createOrganization(input: CreateOrganizationInput): Promise<Organization> {
-  return apiRequest<Organization>("/organizations", { method: "POST", body: JSON.stringify(input) });
+export function createOrganization(
+  input: CreateOrganizationInput,
+): Promise<Organization> {
+  return apiRequest<Organization>("/organizations", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function listOrganizations(): Promise<OrganizationSummary[]> {

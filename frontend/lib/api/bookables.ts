@@ -6,7 +6,9 @@ import type {
 } from "../../types/bookables";
 
 export function listBookables(organizationId: string): Promise<Bookable[]> {
-  return apiRequest<Bookable[]>(`/bookables?organizationId=${encodeURIComponent(organizationId)}`);
+  return apiRequest<Bookable[]>(
+    `/bookables?organizationId=${encodeURIComponent(organizationId)}`,
+  );
 }
 
 export function getBookable(bookableId: string): Promise<Bookable> {
@@ -20,7 +22,10 @@ export function createBookable(input: CreateBookableInput): Promise<Bookable> {
   });
 }
 
-export function updateBookable(bookableId: string, input: UpdateBookableInput): Promise<Bookable> {
+export function updateBookable(
+  bookableId: string,
+  input: UpdateBookableInput,
+): Promise<Bookable> {
   return apiRequest<Bookable>(`/bookables/${bookableId}`, {
     method: "PATCH",
     body: JSON.stringify(input),

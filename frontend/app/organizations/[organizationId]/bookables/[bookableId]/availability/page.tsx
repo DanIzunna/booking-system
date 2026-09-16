@@ -4,19 +4,55 @@ import Link from "next/link";
 import { FormEvent, type MouseEvent, use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../../../../../lib/api/client";
-import { checkAvailability, createAvailabilityException, createAvailabilityWindow, deleteAvailabilityException, deleteAvailabilityWindow, listAvailabilityExceptions, listAvailabilityWindows } from "../../../../../../lib/api/availability";
+import {
+  checkAvailability,
+  createAvailabilityException,
+  createAvailabilityWindow,
+  deleteAvailabilityException,
+  deleteAvailabilityWindow,
+  listAvailabilityExceptions,
+  listAvailabilityWindows,
+} from "../../../../../../lib/api/availability";
 import { getBookable } from "../../../../../../lib/api/bookables";
-import { getOrganization, listOrganizations } from "../../../../../../lib/api/organizations";
+import {
+  getOrganization,
+  listOrganizations,
+} from "../../../../../../lib/api/organizations";
 import { useSession } from "../../../../../../lib/auth/session-provider";
-import { addLocalMinutes, formatLocalTime, formatTimeZoneName, formatZonedDateTime, localDateTimeToIso } from "../../../../../../lib/timezone";
+import {
+  addLocalMinutes,
+  formatLocalTime,
+  formatTimeZoneName,
+  formatZonedDateTime,
+  localDateTimeToIso,
+} from "../../../../../../lib/timezone";
 import type { Bookable } from "../../../../../../types/bookables";
-import type { AvailabilityCheckResult, AvailabilityException, AvailabilityExceptionType, AvailabilityWindow, AvailabilityWindowType } from "../../../../../../types/availability";
-import type { MembershipRole, Organization } from "../../../../../../types/organizations";
+import type {
+  AvailabilityCheckResult,
+  AvailabilityException,
+  AvailabilityExceptionType,
+  AvailabilityWindow,
+  AvailabilityWindowType,
+} from "../../../../../../types/availability";
+import type {
+  MembershipRole,
+  Organization,
+} from "../../../../../../types/organizations";
 import styles from "../../../../../dashboard.module.css";
 import { AppHeader } from "../../../../../../components/layout/app-header";
 
-interface AvailabilityPageProps { params: Promise<{ organizationId: string; bookableId: string }> }
-const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+interface AvailabilityPageProps {
+  params: Promise<{ organizationId: string; bookableId: string }>;
+}
+const weekdays = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   const { organizationId, bookableId } = use(params);
@@ -31,14 +67,16 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [mutationError, setMutationError] = useState("");
   const [pendingAction, setPendingAction] = useState("");
-  const [windowType, setWindowType] = useState<AvailabilityWindowType>("RECURRING");
+  const [windowType, setWindowType] =
+    useState<AvailabilityWindowType>("RECURRING");
   const [weekday, setWeekday] = useState("1");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [specificDate, setSpecificDate] = useState("");
   const [specificStartTime, setSpecificStartTime] = useState("10:00");
   const [specificEndTime, setSpecificEndTime] = useState("14:00");
-  const [exceptionType, setExceptionType] = useState<AvailabilityExceptionType>("BLOCK");
+  const [exceptionType, setExceptionType] =
+    useState<AvailabilityExceptionType>("BLOCK");
   const [exceptionStartDate, setExceptionStartDate] = useState("");
   const [exceptionStartTime, setExceptionStartTime] = useState("10:00");
   const [exceptionEndDate, setExceptionEndDate] = useState("");
@@ -46,78 +84,699 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   const [checkDate, setCheckDate] = useState("");
   const [checkStartTime, setCheckStartTime] = useState("10:00");
   const [duration, setDuration] = useState("60");
-  const [checkResult, setCheckResult] = useState<AvailabilityCheckResult | null>(null);
+  const [checkResult, setCheckResult] =
+    useState<AvailabilityCheckResult | null>(null);
   const loading = status === "authenticated" && !loaded;
   const canManage = role === "OWNER";
 
-  useEffect(() => { if (status === "unauthenticated") router.replace("/login"); }, [router, status]);
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace("/login");
+  }, [router, status]);
   useEffect(() => {
     if (status !== "authenticated") return;
     let cancelled = false;
-    void Promise.all([getBookable(bookableId), getOrganization(organizationId), listOrganizations(), listAvailabilityWindows(bookableId), listAvailabilityExceptions(bookableId)])
-      .then(([nextBookable, nextOrganization, organizations, nextWindows, nextExceptions]) => {
-        if (cancelled) return;
-        if (nextBookable.organizationId !== organizationId) { setErrorStatus(404); setLoaded(true); return; }
-        setBookable(nextBookable); setOrganization(nextOrganization); setRole(organizations.find(({ id }) => id === organizationId)?.role ?? null); setWindows(nextWindows); setExceptions(nextExceptions); setLoaded(true);
-      })
-      .catch((caught) => { if (!cancelled) { setErrorStatus(caught instanceof ApiError ? caught.statusCode : 500); setLoaded(true); } });
-    return () => { cancelled = true; };
+    void Promise.all([
+      getBookable(bookableId),
+      getOrganization(organizationId),
+      listOrganizations(),
+      listAvailabilityWindows(bookableId),
+      listAvailabilityExceptions(bookableId),
+    ])
+      .then(
+        ([
+          nextBookable,
+          nextOrganization,
+          organizations,
+          nextWindows,
+          nextExceptions,
+        ]) => {
+          if (cancelled) return;
+          if (nextBookable.organizationId !== organizationId) {
+            setErrorStatus(404);
+            setLoaded(true);
+            return;
+          }
+          setBookable(nextBookable);
+          setOrganization(nextOrganization);
+          setRole(
+            organizations.find(({ id }) => id === organizationId)?.role ?? null,
+          );
+          setWindows(nextWindows);
+          setExceptions(nextExceptions);
+          setLoaded(true);
+        },
+      )
+      .catch((caught) => {
+        if (!cancelled) {
+          setErrorStatus(caught instanceof ApiError ? caught.statusCode : 500);
+          setLoaded(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [bookableId, organizationId, status]);
 
-  async function handleCreateWindow(event: FormEvent<HTMLFormElement>, requestedType = (event.currentTarget.dataset.windowType as AvailabilityWindowType | undefined) ?? (event.currentTarget.querySelector<HTMLInputElement>('input[type="hidden"]')?.value as AvailabilityWindowType | undefined) ?? windowType) {
-    event.preventDefault(); setMutationError("");
+  async function handleCreateWindow(
+    event: FormEvent<HTMLFormElement>,
+    requestedType = (event.currentTarget.dataset.windowType as
+      | AvailabilityWindowType
+      | undefined) ??
+      (event.currentTarget.querySelector<HTMLInputElement>(
+        'input[type="hidden"]',
+      )?.value as AvailabilityWindowType | undefined) ??
+      windowType,
+  ) {
+    event.preventDefault();
+    setMutationError("");
     if (!organization) return;
-    if (requestedType === "RECURRING" && startTime >= endTime) { setMutationError("End time must be after start time."); return; }
+    if (requestedType === "RECURRING" && startTime >= endTime) {
+      setMutationError("End time must be after start time.");
+      return;
+    }
     const startLocal = `${specificDate}T${specificStartTime}`;
     const endLocal = `${specificDate}T${specificEndTime}`;
-    if (requestedType === "SPECIFIC" && !validLocalInterval(startLocal, endLocal)) { setMutationError("Choose a valid date and an end time after the start time."); return; }
+    if (
+      requestedType === "SPECIFIC" &&
+      !validLocalInterval(startLocal, endLocal)
+    ) {
+      setMutationError(
+        "Choose a valid date and an end time after the start time.",
+      );
+      return;
+    }
     setPendingAction("create-window");
     try {
-      const created = await createAvailabilityWindow(bookableId, requestedType === "RECURRING" ? { type: requestedType, weekday: Number(weekday), startTime, endTime } : { type: requestedType, startAt: localDateTimeToIso(startLocal, organization.timezone), endAt: localDateTimeToIso(endLocal, organization.timezone) });
-      setWindows((current) => [...current, created]); setSpecificDate("");
-    } catch (caught) { setMutationError(formatError(caught, "add this availability")); }
-    finally { setPendingAction(""); }
+      const created = await createAvailabilityWindow(
+        bookableId,
+        requestedType === "RECURRING"
+          ? {
+              type: requestedType,
+              weekday: Number(weekday),
+              startTime,
+              endTime,
+            }
+          : {
+              type: requestedType,
+              startAt: localDateTimeToIso(startLocal, organization.timezone),
+              endAt: localDateTimeToIso(endLocal, organization.timezone),
+            },
+      );
+      setWindows((current) => [...current, created]);
+      setSpecificDate("");
+    } catch (caught) {
+      setMutationError(formatError(caught, "add this availability"));
+    } finally {
+      setPendingAction("");
+    }
   }
 
   async function handleCreateException(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setMutationError("");
+    event.preventDefault();
+    setMutationError("");
     if (!organization) return;
     const startLocal = `${exceptionStartDate}T${exceptionStartTime}`;
     const endLocal = `${exceptionEndDate}T${exceptionEndTime}`;
-    if (!validLocalInterval(startLocal, endLocal)) { setMutationError("Choose valid dates and an end after the start."); return; }
+    if (!validLocalInterval(startLocal, endLocal)) {
+      setMutationError("Choose valid dates and an end after the start.");
+      return;
+    }
     setPendingAction("create-exception");
     try {
-      const created = await createAvailabilityException(bookableId, { type: exceptionType, startAt: localDateTimeToIso(startLocal, organization.timezone), endAt: localDateTimeToIso(endLocal, organization.timezone) });
-      setExceptions((current) => [...current, created]); setExceptionStartDate(""); setExceptionEndDate("");
-    } catch (caught) { setMutationError(formatError(caught, "add this exception")); }
-    finally { setPendingAction(""); }
+      const created = await createAvailabilityException(bookableId, {
+        type: exceptionType,
+        startAt: localDateTimeToIso(startLocal, organization.timezone),
+        endAt: localDateTimeToIso(endLocal, organization.timezone),
+      });
+      setExceptions((current) => [...current, created]);
+      setExceptionStartDate("");
+      setExceptionEndDate("");
+    } catch (caught) {
+      setMutationError(formatError(caught, "add this exception"));
+    } finally {
+      setPendingAction("");
+    }
   }
 
   async function handleDelete(kind: "window" | "exception", id: string) {
     if (!window.confirm(`Remove this availability ${kind}?`)) return;
-    setMutationError(""); setPendingAction(`delete-${kind}`);
-    try { if (kind === "window") { await deleteAvailabilityWindow(bookableId, id); setWindows((current) => current.filter((item) => item.id !== id)); } else { await deleteAvailabilityException(bookableId, id); setExceptions((current) => current.filter((item) => item.id !== id)); } }
-    catch (caught) { setMutationError(formatError(caught, `remove this ${kind}`)); }
-    finally { setPendingAction(""); }
+    setMutationError("");
+    setPendingAction(`delete-${kind}`);
+    try {
+      if (kind === "window") {
+        await deleteAvailabilityWindow(bookableId, id);
+        setWindows((current) => current.filter((item) => item.id !== id));
+      } else {
+        await deleteAvailabilityException(bookableId, id);
+        setExceptions((current) => current.filter((item) => item.id !== id));
+      }
+    } catch (caught) {
+      setMutationError(formatError(caught, `remove this ${kind}`));
+    } finally {
+      setPendingAction("");
+    }
   }
 
-  async function handleCheck(event: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>) {
-    event.preventDefault(); setMutationError(""); setCheckResult(null);
-    if (!organization || !checkDate || !checkStartTime || Number(duration) <= 0) { setMutationError("Choose a date, start time, and duration."); return; }
+  async function handleCheck(
+    event: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>,
+  ) {
+    event.preventDefault();
+    setMutationError("");
+    setCheckResult(null);
+    if (
+      !organization ||
+      !checkDate ||
+      !checkStartTime ||
+      Number(duration) <= 0
+    ) {
+      setMutationError("Choose a date, start time, and duration.");
+      return;
+    }
     const startLocal = `${checkDate}T${checkStartTime}`;
     const endLocal = addLocalMinutes(startLocal, Number(duration));
     setPendingAction("check");
-    try { setCheckResult(await checkAvailability(bookableId, localDateTimeToIso(startLocal, organization.timezone), localDateTimeToIso(endLocal, organization.timezone))); }
-    catch (caught) { setMutationError(formatError(caught, "check availability")); }
-    finally { setPendingAction(""); }
+    try {
+      setCheckResult(
+        await checkAvailability(
+          bookableId,
+          localDateTimeToIso(startLocal, organization.timezone),
+          localDateTimeToIso(endLocal, organization.timezone),
+        ),
+      );
+    } catch (caught) {
+      setMutationError(formatError(caught, "check availability"));
+    } finally {
+      setPendingAction("");
+    }
   }
 
-  if (status === "loading") return <main className="min-h-screen bg-slate-50 p-10 text-sm text-slate-500">Checking your session...</main>;
+  if (status === "loading")
+    return (
+      <main className="min-h-screen bg-slate-50 p-10 text-sm text-slate-500">
+        Checking your session...
+      </main>
+    );
   if (!user) return null;
 
-  return <div className="min-h-screen bg-slate-50"><AppHeader /><main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><Link className="text-sm font-semibold text-teal-700 hover:underline" href={`/organizations/${organizationId}/bookables/${bookableId}`}>← Back to bookable</Link>{loading && <p className="mt-10 text-sm text-slate-500">Loading availability...</p>}{!loading && errorStatus !== null && <ErrorState title={errorStatus === 403 ? "Access denied" : errorStatus === 404 ? "Bookable not found" : "Unable to load availability"} message={errorStatus === 403 ? "You do not have permission to inspect this availability." : errorStatus === 404 ? "This bookable is unavailable or does not belong to this organization." : "Please try again shortly."} />}{!loading && errorStatus === null && bookable && organization && <><div className="mt-10 flex flex-col justify-between gap-5 border-b border-slate-200 pb-8 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Availability</p><h1 className="mt-3 text-4xl font-bold tracking-tight">{bookable.name}</h1><p className="mt-2 text-sm text-slate-500">{organization.name}</p></div><div className="text-left sm:text-right"><p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Organization timezone</p><p className="mt-2 font-semibold text-slate-800">{formatTimeZoneName(organization.timezone)}</p></div></div><p className="mt-6 max-w-2xl text-sm leading-6 text-slate-600">Set the times this resource can be reserved. Recurring times follow the organization timezone; specific dates and exceptions are converted before they reach the backend.</p>{mutationError && <p className="mt-5 border-l-2 border-rose-500 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">{mutationError}</p>}<section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_.9fr]"><div className="space-y-6"><section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">Recurring availability</p><h2 className="mt-2 text-xl font-semibold">Weekly hours</h2>{windows.filter((item) => item.type === "RECURRING").length === 0 && <p className="mt-5 text-sm text-slate-500">No weekly hours configured.</p>}<div className="mt-5 space-y-2">{windows.filter((item) => item.type === "RECURRING").map((item) => <div className="flex items-center justify-between gap-4 border-b border-slate-100 py-3" key={item.id}><span className="text-sm font-medium">{weekdays[item.weekday ?? 0]}</span><span className="text-sm text-slate-600">{formatLocalTime(item.startTime)} – {formatLocalTime(item.endTime)}</span>{canManage && <button className="text-xs font-semibold text-rose-700" disabled={Boolean(pendingAction)} onClick={() => void handleDelete("window", item.id)}>Remove</button>}</div>)}</div>{canManage && <form className="mt-6 grid gap-4 border-t border-slate-100 pt-5" onSubmit={handleCreateWindow}><div className="grid gap-4 sm:grid-cols-3"><label className="space-y-2 text-sm font-semibold text-slate-700">Day<select className={styles.friendlyInput} value={weekday} onChange={(event) => setWeekday(event.target.value)}><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option></select></label><label className="space-y-2 text-sm font-semibold text-slate-700">Start<input className={styles.friendlyInput} type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required /></label><label className="space-y-2 text-sm font-semibold text-slate-700">End<input className={styles.friendlyInput} type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required /></label></div><button className={styles.primaryButton} type="submit" disabled={Boolean(pendingAction)}>{pendingAction === "create-window" ? "Adding..." : "Add availability"}</button></form>}</section><section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">Specific availability</p><h2 className="mt-2 text-xl font-semibold">One-time windows</h2><div className="mt-5 space-y-2">{windows.filter((item) => item.type === "SPECIFIC").map((item) => <div className="flex items-center justify-between gap-4 border-b border-slate-100 py-3" key={item.id}><span className="text-sm text-slate-700">{formatZonedDateTime(item.startAt ?? "", organization.timezone)} – {formatZonedDateTime(item.endAt ?? "", organization.timezone)}</span>{canManage && <button className="text-xs font-semibold text-rose-700" disabled={Boolean(pendingAction)} onClick={() => void handleDelete("window", item.id)}>Remove</button>}</div>)}{windows.filter((item) => item.type === "SPECIFIC").length === 0 && <p className="text-sm text-slate-500">No specific windows configured.</p>}</div>{canManage && <form className="mt-6 grid gap-4 border-t border-slate-100 pt-5" onSubmit={handleCreateWindow}><input type="hidden" value="SPECIFIC" readOnly /><div className="grid gap-4 sm:grid-cols-3"><label className="space-y-2 text-sm font-semibold text-slate-700">Date<input className={styles.friendlyInput} type="date" value={specificDate} onChange={(event) => setSpecificDate(event.target.value)} required /></label><label className="space-y-2 text-sm font-semibold text-slate-700">Starts<input className={styles.friendlyInput} type="time" value={specificStartTime} onChange={(event) => setSpecificStartTime(event.target.value)} required /></label><label className="space-y-2 text-sm font-semibold text-slate-700">Ends<input className={styles.friendlyInput} type="time" value={specificEndTime} onChange={(event) => setSpecificEndTime(event.target.value)} required /></label></div><button className={styles.primaryButton} type="submit" disabled={Boolean(pendingAction)} onClick={() => setWindowType("SPECIFIC")}>{pendingAction === "create-window" ? "Adding..." : "Add specific window"}</button></form>}</section></div><div className="space-y-6"><section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">Exceptions</p><h2 className="mt-2 text-xl font-semibold">Blocks and overrides</h2><div className="mt-5 space-y-2">{exceptions.map((item) => <div className="flex items-start justify-between gap-4 border-b border-slate-100 py-3" key={item.id}><span><strong className="block text-xs uppercase tracking-wider text-slate-700">{item.type}</strong><small className="mt-1 block text-sm text-slate-500">{formatZonedDateTime(item.startAt, organization.timezone)} – {formatZonedDateTime(item.endAt, organization.timezone)}</small></span>{canManage && <button className="text-xs font-semibold text-rose-700" disabled={Boolean(pendingAction)} onClick={() => void handleDelete("exception", item.id)}>Remove</button>}</div>)}{exceptions.length === 0 && <p className="text-sm text-slate-500">No exceptions configured.</p>}</div>{canManage && <form className="mt-6 grid gap-4 border-t border-slate-100 pt-5" onSubmit={handleCreateException}><label className="space-y-2 text-sm font-semibold text-slate-700">Type<select className={styles.friendlyInput} value={exceptionType} onChange={(event) => setExceptionType(event.target.value as AvailabilityExceptionType)}><option value="BLOCK">Block time</option><option value="OVERRIDE">Override availability</option></select></label><div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2 text-sm font-semibold text-slate-700">Starts<input className={styles.friendlyInput} type="datetime-local" value={`${exceptionStartDate}T${exceptionStartTime}`} onChange={(event) => { const [date, time] = event.target.value.split("T"); setExceptionStartDate(date); setExceptionStartTime(time); }} required /></label><label className="space-y-2 text-sm font-semibold text-slate-700">Ends<input className={styles.friendlyInput} type="datetime-local" value={`${exceptionEndDate}T${exceptionEndTime}`} onChange={(event) => { const [date, time] = event.target.value.split("T"); setExceptionEndDate(date); setExceptionEndTime(time); }} required /></label></div><button className={styles.primaryButton} type="submit" disabled={Boolean(pendingAction)}>{pendingAction === "create-exception" ? "Adding..." : "Add exception"}</button></form>}</section><section className="rounded-xl border border-slate-200 bg-slate-white bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">Check availability</p><h2 className="mt-2 text-xl font-semibold">Test a time</h2><p className="mt-2 text-sm leading-6 text-slate-500">The backend evaluates your windows and exceptions in the organization timezone.</p><form className="mt-5 grid gap-4"><label className="space-y-2 text-sm font-semibold text-slate-700">Date<input className={styles.friendlyInput} type="date" value={checkDate} onChange={(event) => setCheckDate(event.target.value)} required /></label><div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2 text-sm font-semibold text-slate-700">Start<input className={styles.friendlyInput} type="time" value={checkStartTime} onChange={(event) => setCheckStartTime(event.target.value)} required /></label><label className="space-y-2 text-sm font-semibold text-slate-700">Duration<select className={styles.friendlyInput} value={duration} onChange={(event) => setDuration(event.target.value)}><option value="30">30 minutes</option><option value="60">1 hour</option><option value="90">1 hour 30 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option></select></label></div><button className={styles.primaryButton} type="submit" disabled={Boolean(pendingAction)} onClick={(event) => void handleCheck(event)}>{pendingAction === "check" ? "Checking..." : "Check availability"}</button></form>{checkResult && <div className={`mt-5 rounded-lg border p-4 ${checkResult.available ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}><strong className="block">{checkResult.available ? "Available" : "Not available"}</strong><span className="mt-1 block text-sm">{checkResult.available ? `${formatZonedDateTime(checkResult.startAt, organization.timezone)} – ${formatZonedDateTime(checkResult.endAt, organization.timezone)}` : "This time overlaps existing availability restrictions."}</span></div>}</section></div></section></>}</main></div>;
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <AppHeader />
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <Link
+          className="text-sm font-semibold text-teal-700 hover:underline"
+          href={`/organizations/${organizationId}/bookables/${bookableId}`}
+        >
+          ← Back to bookable
+        </Link>
+        {loading && (
+          <p className="mt-10 text-sm text-slate-500">
+            Loading availability...
+          </p>
+        )}
+        {!loading && errorStatus !== null && (
+          <ErrorState
+            title={
+              errorStatus === 403
+                ? "Access denied"
+                : errorStatus === 404
+                  ? "Bookable not found"
+                  : "Unable to load availability"
+            }
+            message={
+              errorStatus === 403
+                ? "You do not have permission to inspect this availability."
+                : errorStatus === 404
+                  ? "This bookable is unavailable or does not belong to this organization."
+                  : "Please try again shortly."
+            }
+          />
+        )}
+        {!loading && errorStatus === null && bookable && organization && (
+          <>
+            <div className="mt-10 flex flex-col justify-between gap-5 border-b border-slate-200 pb-8 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">
+                  Availability
+                </p>
+                <h1 className="mt-3 text-4xl font-bold tracking-tight">
+                  {bookable.name}
+                </h1>
+                <p className="mt-2 text-sm text-slate-500">
+                  {organization.name}
+                </p>
+              </div>
+              <div className="text-left sm:text-right">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                  Organization timezone
+                </p>
+                <p className="mt-2 font-semibold text-slate-800">
+                  {formatTimeZoneName(organization.timezone)}
+                </p>
+              </div>
+            </div>
+            <p className="mt-6 max-w-2xl text-sm leading-6 text-slate-600">
+              Set the times this resource can be reserved. Recurring times
+              follow the organization timezone; specific dates and exceptions
+              are converted before they reach the backend.
+            </p>
+            {mutationError && (
+              <p
+                className="mt-5 border-l-2 border-rose-500 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                role="alert"
+              >
+                {mutationError}
+              </p>
+            )}
+            <section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+              <div className="space-y-6">
+                <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                    Recurring availability
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">Weekly hours</h2>
+                  {windows.filter((item) => item.type === "RECURRING")
+                    .length === 0 && (
+                    <p className="mt-5 text-sm text-slate-500">
+                      No weekly hours configured.
+                    </p>
+                  )}
+                  <div className="mt-5 space-y-2">
+                    {windows
+                      .filter((item) => item.type === "RECURRING")
+                      .map((item) => (
+                        <div
+                          className="flex items-center justify-between gap-4 border-b border-slate-100 py-3"
+                          key={item.id}
+                        >
+                          <span className="text-sm font-medium">
+                            {weekdays[item.weekday ?? 0]}
+                          </span>
+                          <span className="text-sm text-slate-600">
+                            {formatLocalTime(item.startTime)} –{" "}
+                            {formatLocalTime(item.endTime)}
+                          </span>
+                          {canManage && (
+                            <button
+                              className="text-xs font-semibold text-rose-700"
+                              disabled={Boolean(pendingAction)}
+                              onClick={() =>
+                                void handleDelete("window", item.id)
+                              }
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                  {canManage && (
+                    <form
+                      className="mt-6 grid gap-4 border-t border-slate-100 pt-5"
+                      onSubmit={handleCreateWindow}
+                    >
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          Day
+                          <select
+                            className={styles.friendlyInput}
+                            value={weekday}
+                            onChange={(event) => setWeekday(event.target.value)}
+                          >
+                            <option value="0">Sunday</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5">Friday</option>
+                            <option value="6">Saturday</option>
+                          </select>
+                        </label>
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          Start
+                          <input
+                            className={styles.friendlyInput}
+                            type="time"
+                            value={startTime}
+                            onChange={(event) =>
+                              setStartTime(event.target.value)
+                            }
+                            required
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          End
+                          <input
+                            className={styles.friendlyInput}
+                            type="time"
+                            value={endTime}
+                            onChange={(event) => setEndTime(event.target.value)}
+                            required
+                          />
+                        </label>
+                      </div>
+                      <button
+                        className={styles.primaryButton}
+                        type="submit"
+                        disabled={Boolean(pendingAction)}
+                      >
+                        {pendingAction === "create-window"
+                          ? "Adding..."
+                          : "Add availability"}
+                      </button>
+                    </form>
+                  )}
+                </section>
+                <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                    Specific availability
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">
+                    One-time windows
+                  </h2>
+                  <div className="mt-5 space-y-2">
+                    {windows
+                      .filter((item) => item.type === "SPECIFIC")
+                      .map((item) => (
+                        <div
+                          className="flex items-center justify-between gap-4 border-b border-slate-100 py-3"
+                          key={item.id}
+                        >
+                          <span className="text-sm text-slate-700">
+                            {formatZonedDateTime(
+                              item.startAt ?? "",
+                              organization.timezone,
+                            )}{" "}
+                            –{" "}
+                            {formatZonedDateTime(
+                              item.endAt ?? "",
+                              organization.timezone,
+                            )}
+                          </span>
+                          {canManage && (
+                            <button
+                              className="text-xs font-semibold text-rose-700"
+                              disabled={Boolean(pendingAction)}
+                              onClick={() =>
+                                void handleDelete("window", item.id)
+                              }
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    {windows.filter((item) => item.type === "SPECIFIC")
+                      .length === 0 && (
+                      <p className="text-sm text-slate-500">
+                        No specific windows configured.
+                      </p>
+                    )}
+                  </div>
+                  {canManage && (
+                    <form
+                      className="mt-6 grid gap-4 border-t border-slate-100 pt-5"
+                      onSubmit={handleCreateWindow}
+                    >
+                      <input type="hidden" value="SPECIFIC" readOnly />
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          Date
+                          <input
+                            className={styles.friendlyInput}
+                            type="date"
+                            value={specificDate}
+                            onChange={(event) =>
+                              setSpecificDate(event.target.value)
+                            }
+                            required
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          Starts
+                          <input
+                            className={styles.friendlyInput}
+                            type="time"
+                            value={specificStartTime}
+                            onChange={(event) =>
+                              setSpecificStartTime(event.target.value)
+                            }
+                            required
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          Ends
+                          <input
+                            className={styles.friendlyInput}
+                            type="time"
+                            value={specificEndTime}
+                            onChange={(event) =>
+                              setSpecificEndTime(event.target.value)
+                            }
+                            required
+                          />
+                        </label>
+                      </div>
+                      <button
+                        className={styles.primaryButton}
+                        type="submit"
+                        disabled={Boolean(pendingAction)}
+                        onClick={() => setWindowType("SPECIFIC")}
+                      >
+                        {pendingAction === "create-window"
+                          ? "Adding..."
+                          : "Add specific window"}
+                      </button>
+                    </form>
+                  )}
+                </section>
+              </div>
+              <div className="space-y-6">
+                <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                    Exceptions
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">
+                    Blocks and overrides
+                  </h2>
+                  <div className="mt-5 space-y-2">
+                    {exceptions.map((item) => (
+                      <div
+                        className="flex items-start justify-between gap-4 border-b border-slate-100 py-3"
+                        key={item.id}
+                      >
+                        <span>
+                          <strong className="block text-xs uppercase tracking-wider text-slate-700">
+                            {item.type}
+                          </strong>
+                          <small className="mt-1 block text-sm text-slate-500">
+                            {formatZonedDateTime(
+                              item.startAt,
+                              organization.timezone,
+                            )}{" "}
+                            –{" "}
+                            {formatZonedDateTime(
+                              item.endAt,
+                              organization.timezone,
+                            )}
+                          </small>
+                        </span>
+                        {canManage && (
+                          <button
+                            className="text-xs font-semibold text-rose-700"
+                            disabled={Boolean(pendingAction)}
+                            onClick={() =>
+                              void handleDelete("exception", item.id)
+                            }
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {exceptions.length === 0 && (
+                      <p className="text-sm text-slate-500">
+                        No exceptions configured.
+                      </p>
+                    )}
+                  </div>
+                  {canManage && (
+                    <form
+                      className="mt-6 grid gap-4 border-t border-slate-100 pt-5"
+                      onSubmit={handleCreateException}
+                    >
+                      <label className="space-y-2 text-sm font-semibold text-slate-700">
+                        Type
+                        <select
+                          className={styles.friendlyInput}
+                          value={exceptionType}
+                          onChange={(event) =>
+                            setExceptionType(
+                              event.target.value as AvailabilityExceptionType,
+                            )
+                          }
+                        >
+                          <option value="BLOCK">Block time</option>
+                          <option value="OVERRIDE">
+                            Override availability
+                          </option>
+                        </select>
+                      </label>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          Starts
+                          <input
+                            className={styles.friendlyInput}
+                            type="datetime-local"
+                            value={`${exceptionStartDate}T${exceptionStartTime}`}
+                            onChange={(event) => {
+                              const [date, time] =
+                                event.target.value.split("T");
+                              setExceptionStartDate(date);
+                              setExceptionStartTime(time);
+                            }}
+                            required
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm font-semibold text-slate-700">
+                          Ends
+                          <input
+                            className={styles.friendlyInput}
+                            type="datetime-local"
+                            value={`${exceptionEndDate}T${exceptionEndTime}`}
+                            onChange={(event) => {
+                              const [date, time] =
+                                event.target.value.split("T");
+                              setExceptionEndDate(date);
+                              setExceptionEndTime(time);
+                            }}
+                            required
+                          />
+                        </label>
+                      </div>
+                      <button
+                        className={styles.primaryButton}
+                        type="submit"
+                        disabled={Boolean(pendingAction)}
+                      >
+                        {pendingAction === "create-exception"
+                          ? "Adding..."
+                          : "Add exception"}
+                      </button>
+                    </form>
+                  )}
+                </section>
+                <section className="rounded-xl border border-slate-200 bg-slate-white bg-white p-5 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                    Check availability
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">Test a time</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    The backend evaluates your windows and exceptions in the
+                    organization timezone.
+                  </p>
+                  <form className="mt-5 grid gap-4">
+                    <label className="space-y-2 text-sm font-semibold text-slate-700">
+                      Date
+                      <input
+                        className={styles.friendlyInput}
+                        type="date"
+                        value={checkDate}
+                        onChange={(event) => setCheckDate(event.target.value)}
+                        required
+                      />
+                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="space-y-2 text-sm font-semibold text-slate-700">
+                        Start
+                        <input
+                          className={styles.friendlyInput}
+                          type="time"
+                          value={checkStartTime}
+                          onChange={(event) =>
+                            setCheckStartTime(event.target.value)
+                          }
+                          required
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm font-semibold text-slate-700">
+                        Duration
+                        <select
+                          className={styles.friendlyInput}
+                          value={duration}
+                          onChange={(event) => setDuration(event.target.value)}
+                        >
+                          <option value="30">30 minutes</option>
+                          <option value="60">1 hour</option>
+                          <option value="90">1 hour 30 minutes</option>
+                          <option value="120">2 hours</option>
+                          <option value="180">3 hours</option>
+                        </select>
+                      </label>
+                    </div>
+                    <button
+                      className={styles.primaryButton}
+                      type="submit"
+                      disabled={Boolean(pendingAction)}
+                      onClick={(event) => void handleCheck(event)}
+                    >
+                      {pendingAction === "check"
+                        ? "Checking..."
+                        : "Check availability"}
+                    </button>
+                  </form>
+                  {checkResult && (
+                    <div
+                      className={`mt-5 rounded-lg border p-4 ${checkResult.available ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
+                    >
+                      <strong className="block">
+                        {checkResult.available ? "Available" : "Not available"}
+                      </strong>
+                      <span className="mt-1 block text-sm">
+                        {checkResult.available
+                          ? `${formatZonedDateTime(checkResult.startAt, organization.timezone)} – ${formatZonedDateTime(checkResult.endAt, organization.timezone)}`
+                          : "This time overlaps existing availability restrictions."}
+                      </span>
+                    </div>
+                  )}
+                </section>
+              </div>
+            </section>
+          </>
+        )}
+      </main>
+    </div>
+  );
 }
 
-function validLocalInterval(start: string, end: string) { return Boolean(start && end) && end > start; }
-function formatError(caught: unknown, action: string) { if (!(caught instanceof ApiError)) return `Unable to ${action}. Please try again.`; if (caught.statusCode === 403) return "Only an organization owner can change availability."; if (caught.statusCode === 404) return "This organization or bookable is unavailable."; if (caught.statusCode === 409) return caught.message || "This availability conflicts with an existing exception."; if (caught.statusCode === 400) return caught.message || "Check the availability values and try again."; return `Unable to ${action}. Please try again.`; }
-function ErrorState({ title, message }: { title: string; message: string }) { return <section className="mt-10 max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-700">{title}</p><h1 className="mt-3 text-3xl font-bold">We could not open availability.</h1><p className="mt-3 text-sm leading-6 text-slate-500">{message}</p></section>; }
+function validLocalInterval(start: string, end: string) {
+  return Boolean(start && end) && end > start;
+}
+function formatError(caught: unknown, action: string) {
+  if (!(caught instanceof ApiError))
+    return `Unable to ${action}. Please try again.`;
+  if (caught.statusCode === 403)
+    return "Only an organization owner can change availability.";
+  if (caught.statusCode === 404)
+    return "This organization or bookable is unavailable.";
+  if (caught.statusCode === 409)
+    return (
+      caught.message ||
+      "This availability conflicts with an existing exception."
+    );
+  if (caught.statusCode === 400)
+    return caught.message || "Check the availability values and try again.";
+  return `Unable to ${action}. Please try again.`;
+}
+function ErrorState({ title, message }: { title: string; message: string }) {
+  return (
+    <section className="mt-10 max-w-2xl">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-700">
+        {title}
+      </p>
+      <h1 className="mt-3 text-3xl font-bold">
+        We could not open availability.
+      </h1>
+      <p className="mt-3 text-sm leading-6 text-slate-500">{message}</p>
+    </section>
+  );
+}

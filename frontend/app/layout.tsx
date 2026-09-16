@@ -4,7 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Bookable | Make anything bookable",
-  description: "Create bookable resources, define availability, and share a booking page.",
+  description:
+    "Create bookable resources, define availability, and share a booking page.",
 };
 
 export default function RootLayout({
@@ -14,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body><SessionProvider>{children}</SessionProvider></body>
+      <body>
+        <SessionProvider>{children}</SessionProvider>
+      </body>
     </html>
   );
 }
