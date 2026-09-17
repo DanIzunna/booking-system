@@ -7,13 +7,16 @@ import {
 import {
   BookableReservationRule,
   BookableStatus,
+  ConfirmationPolicy,
   DurationMode,
   Prisma,
   ReservationStatus,
 } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { OrganizationAuthorizationService } from "../organizations/organization-authorization.service";
 import { AvailabilityEngineService } from "../availability/availability-engine.service";
 import { CreateReservationDto } from "./dto/create-reservation.dto";
+import { ListOrganizationReservationsDto } from "./dto/list-organization-reservations.dto";
 
 const reservationSelect = {
   id: true,
@@ -48,12 +51,94 @@ const customerReservationSelect = {
   },
 } satisfies Prisma.ReservationSelect;
 
+const operatorReservationSelect = {
+  id: true,
+  bookableId: true,
+  startAt: true,
+  endAt: true,
+  quantity: true,
+  amount: true,
+  currency: true,
+  status: true,
+  expiresAt: true,
+  createdAt: true,
+  updatedAt: true,
+  bookable: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      organization: { select: { id: true, name: true, timezone: true } },
+    },
+  },
+  customer: {
+    select: { id: true, name: true, email: true },
+  },
+  payment: {
+    select: { id: true, status: true, amount: true, currency: true },
+  },
+} satisfies Prisma.ReservationSelect;
+
 @Injectable()
 export class ReservationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityEngineService,
+    private readonly organizationAuthorization: OrganizationAuthorizationService,
   ) {}
+
+  async listForOrganization(
+    userId: string,
+    organizationId: string,
+    filter: ListOrganizationReservationsDto,
+  ) {
+    await this.organizationAuthorization.requireMembership(
+      userId,
+      organizationId,
+    );
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { timezone: true },
+    });
+    if (!organization) throw new NotFoundException("Organization not found");
+    const dateRange = filter.date
+      ? organizationDateRange(filter.date, organization.timezone)
+      : undefined;
+    return this.prisma.reservation.findMany({
+      where: {
+        ...(filter.bookableId ? { bookableId: filter.bookableId } : {}),
+        ...(filter.status ? { status: filter.status } : {}),
+        ...(dateRange
+          ? { startAt: { lt: dateRange.end }, endAt: { gt: dateRange.start } }
+          : {}),
+        bookable: {
+          organizationId,
+        },
+      },
+      orderBy: { startAt: "asc" },
+      select: operatorReservationSelect,
+    });
+  }
+
+  async getForOrganization(
+    userId: string,
+    organizationId: string,
+    reservationId: string,
+  ) {
+    await this.organizationAuthorization.requireMembership(
+      userId,
+      organizationId,
+    );
+    const reservation = await this.prisma.reservation.findFirst({
+      where: {
+        id: reservationId,
+        bookable: { organizationId },
+      },
+      select: operatorReservationSelect,
+    });
+    if (!reservation) throw new NotFoundException("Reservation not found");
+    return reservation;
+  }
 
   async create(
     customerId: string,
@@ -96,7 +181,12 @@ export class ReservationsService {
 
       const lockedBookable = await transaction.bookable.findUnique({
         where: { id: bookableId },
-        select: { id: true, capacity: true, status: true },
+        select: {
+          id: true,
+          capacity: true,
+          status: true,
+          confirmationPolicy: true,
+        },
       });
       if (
         !lockedBookable ||
@@ -124,6 +214,12 @@ export class ReservationsService {
         throw new ConflictException("Bookable capacity exceeded");
       }
 
+      const status =
+        lockedBookable.confirmationPolicy ===
+        ConfirmationPolicy.REQUIRES_APPROVAL
+          ? ReservationStatus.PENDING
+          : ReservationStatus.CONFIRMED;
+
       return transaction.reservation.create({
         data: {
           bookableId,
@@ -133,7 +229,7 @@ export class ReservationsService {
           quantity: input.quantity,
           amount: input.quantity * bookable.price,
           currency: bookable.currency,
-          status: ReservationStatus.PENDING,
+          status,
         },
         select: reservationSelect,
       });
@@ -301,4 +397,44 @@ export class ReservationsService {
       throw new ConflictException("Reservation exceeds maximum advance time");
     }
   }
+}
+
+function organizationDateRange(date: string, timezone: string) {
+  const start = localTimeToInstant(date, "00:00", timezone);
+  const dateCursor = new Date(`${date}T12:00:00Z`);
+  dateCursor.setUTCDate(dateCursor.getUTCDate() + 1);
+  const nextDate = dateCursor.toISOString().slice(0, 10);
+  return { start, end: localTimeToInstant(nextDate, "00:00", timezone) };
+}
+
+function localTimeToInstant(date: string, time: string, timezone: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const desired = Date.UTC(year, month - 1, day, hour, minute);
+  let guess = new Date(desired);
+  for (let index = 0; index < 4; index += 1) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(guess);
+    const values = Object.fromEntries(
+      parts
+        .filter(({ type }) => type !== "literal")
+        .map(({ type, value }) => [type, Number(value)]),
+    );
+    const represented = Date.UTC(
+      values.year,
+      values.month - 1,
+      values.day,
+      values.hour,
+      values.minute,
+    );
+    guess = new Date(guess.getTime() + desired - represented);
+  }
+  return guess;
 }

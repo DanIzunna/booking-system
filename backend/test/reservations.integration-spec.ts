@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   BookableStatus,
+  ConfirmationPolicy,
   DurationMode,
   ReservationStatus,
 } from "@prisma/client";
@@ -30,6 +31,7 @@ describe("Reservations (integration)", () => {
   let owner: Session;
   let customer: Session;
   let secondCustomer: Session;
+  let member: Session;
   let organizationId: string;
   const userIds: string[] = [];
   const organizationIds: string[] = [];
@@ -62,8 +64,12 @@ describe("Reservations (integration)", () => {
     owner = await register("reservation-owner");
     customer = await register("reservation-customer");
     secondCustomer = await register("reservation-second-customer");
+    member = await register("reservation-member");
     organizationId = await createOrganization(owner);
     organizationIds.push(organizationId);
+    await prisma.organizationMembership.create({
+      data: { userId: member.id, organizationId, role: "MEMBER" },
+    });
   });
 
   afterAll(async () => {
@@ -107,6 +113,66 @@ describe("Reservations (integration)", () => {
         bookableId: bookable.id,
         customerId: customer.id,
         quantity: 1,
+        status: "CONFIRMED",
+      }),
+    );
+  });
+
+  it("creates automatic free reservations as confirmed immediately", async () => {
+    const bookable = await createBookable({
+      confirmationPolicy: ConfirmationPolicy.AUTOMATIC,
+    });
+    const created = await createReservation(customer, bookable);
+    expect(created.body).toEqual(
+      expect.objectContaining({
+        bookableId: bookable.id,
+        quantity: 1,
+        amount: 0,
+        status: "CONFIRMED",
+      }),
+    );
+  });
+
+  it("creates automatic paid reservations as confirmed immediately", async () => {
+    const bookable = await createBookable({
+      confirmationPolicy: ConfirmationPolicy.AUTOMATIC,
+      price: 1000,
+    });
+    const created = await createReservation(customer, bookable);
+    expect(created.body).toEqual(
+      expect.objectContaining({
+        bookableId: bookable.id,
+        amount: 1000,
+        status: "CONFIRMED",
+      }),
+    );
+  });
+
+  it("creates approval-required free reservations as pending", async () => {
+    const bookable = await createBookable({
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const created = await createReservation(customer, bookable);
+    expect(created.body).toEqual(
+      expect.objectContaining({
+        bookableId: bookable.id,
+        quantity: 1,
+        amount: 0,
+        status: "PENDING",
+      }),
+    );
+  });
+
+  it("creates approval-required paid reservations as pending", async () => {
+    const bookable = await createBookable({
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+      price: 1000,
+    });
+    const created = await createReservation(customer, bookable);
+    expect(created.body).toEqual(
+      expect.objectContaining({
+        bookableId: bookable.id,
+        amount: 1000,
         status: "PENDING",
       }),
     );
@@ -369,6 +435,98 @@ describe("Reservations (integration)", () => {
     );
   });
 
+  it("supports organization-scoped operator reservation reads and filters", async () => {
+    const primaryBookable = await createBookable({
+      organizationId,
+      capacity: 2,
+    });
+    const pendingBookable = await createBookable({
+      organizationId,
+      capacity: 2,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const secondOrganizationId = await createOrganization(owner);
+    organizationIds.push(secondOrganizationId);
+    const secondaryBookable = await createBookable({
+      organizationId: secondOrganizationId,
+      capacity: 2,
+    });
+    const primary = await createReservation(customer, primaryBookable);
+    const pending = await createReservation(customer, pendingBookable);
+    const secondary = await createReservation(customer, secondaryBookable);
+    const date = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Lagos",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(primaryBookable.startAt);
+
+    const ownerList = await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${organizationId}/reservations`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(200);
+    expect(ownerList.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: primary.body.id,
+          bookable: expect.objectContaining({ id: primaryBookable.id }),
+          customer: expect.objectContaining({ id: customer.id }),
+        }),
+      ]),
+    );
+    expect(ownerList.body).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: secondary.body.id }),
+      ]),
+    );
+
+    const memberList = await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${organizationId}/reservations`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(200);
+    expect(memberList.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: primary.body.id }),
+      ]),
+    );
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${organizationId}/reservations`)
+      .query({ bookableId: pendingBookable.id, status: "PENDING", date })
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(200)
+      .then((response) => {
+        expect(response.body).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: pending.body.id }),
+          ]),
+        );
+        expect(response.body).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: primary.body.id }),
+          ]),
+        );
+        expect(response.body).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: secondary.body.id }),
+          ]),
+        );
+      });
+
+    await request(app.getHttpServer())
+      .get(
+        `/api/v1/organizations/${organizationId}/reservations/${primary.body.id}`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(
+        `/api/v1/organizations/${secondOrganizationId}/reservations/${primary.body.id}`,
+      )
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(404);
+  });
+
   it("allows exactly one concurrent reservation at capacity one", async () => {
     const bookable = await createBookable({ capacity: 1 });
     const results = await Promise.all([
@@ -425,8 +583,11 @@ describe("Reservations (integration)", () => {
 
   async function createBookable(
     options: {
+      organizationId?: string;
       capacity?: number;
       status?: BookableStatus;
+      confirmationPolicy?: ConfirmationPolicy;
+      price?: number;
       durationMode?: DurationMode;
       minimumDuration?: number;
       maximumDuration?: number;
@@ -443,11 +604,14 @@ describe("Reservations (integration)", () => {
     const durationMode = options.durationMode ?? DurationMode.FLEXIBLE;
     const response = await prisma.bookable.create({
       data: {
-        organizationId,
+        organizationId: options.organizationId ?? organizationId,
         name: `Reservation Bookable ${Date.now()}`,
         slug: `reservation-bookable-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         status: options.status ?? BookableStatus.PUBLISHED,
+        confirmationPolicy:
+          options.confirmationPolicy ?? ConfirmationPolicy.AUTOMATIC,
         capacity: options.capacity ?? 2,
+        price: options.price ?? 0,
         reservationRule: {
           create: {
             durationMode,

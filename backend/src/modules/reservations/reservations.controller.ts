@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -16,6 +17,7 @@ import {
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
 import { AuthenticatedRequest } from "../auth/auth.types";
 import { CreateReservationDto } from "./dto/create-reservation.dto";
+import { ListOrganizationReservationsDto } from "./dto/list-organization-reservations.dto";
 import { ReservationsService } from "./reservations.service";
 
 @Controller()
@@ -24,6 +26,37 @@ import { ReservationsService } from "./reservations.service";
 @ApiBearerAuth()
 export class ReservationsController {
   constructor(private readonly reservations: ReservationsService) {}
+
+  @Get("organizations/:organizationId/reservations")
+  @ApiOperation({ summary: "List reservations for an organization member" })
+  @ApiParam({ name: "organizationId", format: "uuid" })
+  listOrganization(
+    @Req() request: AuthenticatedRequest,
+    @Param("organizationId") organizationId: string,
+    @Query() query: ListOrganizationReservationsDto,
+  ) {
+    return this.reservations.listForOrganization(
+      request.user.id,
+      organizationId,
+      query,
+    );
+  }
+
+  @Get("organizations/:organizationId/reservations/:reservationId")
+  @ApiOperation({ summary: "Get an organization reservation for a member" })
+  @ApiParam({ name: "organizationId", format: "uuid" })
+  @ApiParam({ name: "reservationId", format: "uuid" })
+  getOrganizationReservation(
+    @Req() request: AuthenticatedRequest,
+    @Param("organizationId") organizationId: string,
+    @Param("reservationId") reservationId: string,
+  ) {
+    return this.reservations.getForOrganization(
+      request.user.id,
+      organizationId,
+      reservationId,
+    );
+  }
 
   @Post("bookables/:bookableId/reservations")
   @ApiOperation({ summary: "Create a reservation for a published Bookable" })

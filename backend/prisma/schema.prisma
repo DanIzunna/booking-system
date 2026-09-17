@@ -28,6 +28,11 @@ enum DurationMode {
   FIXED
 }
 
+enum ConfirmationPolicy {
+  AUTOMATIC
+  REQUIRES_APPROVAL
+}
+
 enum AvailabilityWindowType {
   RECURRING
   SPECIFIC
@@ -41,6 +46,7 @@ enum AvailabilityExceptionType {
 enum ReservationStatus {
   PENDING
   CONFIRMED
+  REJECTED
   CANCELLED
   EXPIRED
   COMPLETED
@@ -106,6 +112,7 @@ model Bookable {
   description       String?
   slug              String                    @unique @db.VarChar(160)
   status            BookableStatus             @default(DRAFT)
+  confirmationPolicy ConfirmationPolicy       @default(AUTOMATIC)
   capacity          Int
   price             Int                       @default(0)
   currency          String                    @default("NGN") @db.Char(3)
