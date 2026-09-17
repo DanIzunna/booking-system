@@ -14,14 +14,18 @@ import {
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AvailabilityEngineService } from "../availability/availability-engine.service";
 import { PublicAvailabilityCheckDto } from "./dto/public-availability-check.dto";
+import { PublicAvailabilityDto } from "./dto/public-availability.dto";
 
 const publicBookableSelect = {
   id: true,
   slug: true,
   name: true,
   description: true,
+  status: true,
+  price: true,
+  currency: true,
   capacity: true,
-  organization: { select: { id: true, name: true } },
+  organization: { select: { id: true, name: true, timezone: true } },
   reservationRule: {
     select: {
       durationMode: true,
@@ -113,6 +117,91 @@ export class PublicBookingService {
     return { available: true };
   }
 
+  async getAvailability(slug: string, input: PublicAvailabilityDto) {
+    const bookable = await this.findPublishedBookable(slug, {
+      id: true,
+      capacity: true,
+      organization: { select: { timezone: true } },
+      reservationRule: true,
+    });
+    const [windows, exceptions] = await Promise.all([
+      this.prisma.availabilityWindow.findMany({
+        where: { bookableId: bookable.id },
+      }),
+      this.prisma.availabilityException.findMany({
+        where: { bookableId: bookable.id },
+      }),
+    ]);
+    const intervals = await this.availability.intervalsForDate(
+      input.date,
+      bookable.organization.timezone,
+      windows,
+      exceptions,
+    );
+    if (intervals.length === 0) {
+      return {
+        date: input.date,
+        timezone: bookable.organization.timezone,
+        capacity: bookable.capacity,
+        durationMode: bookable.reservationRule?.durationMode ?? null,
+        durationSeconds: bookable.reservationRule?.fixedDuration ?? null,
+        intervals: [],
+        slots: [],
+        reason: "NO_AVAILABILITY",
+      };
+    }
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        bookableId: bookable.id,
+        status: {
+          in: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED],
+        },
+        ...(intervals.length
+          ? {
+              startAt: { lt: intervals[intervals.length - 1].endAt },
+              endAt: { gt: intervals[0].startAt },
+            }
+          : {}),
+      },
+      select: { startAt: true, endAt: true, quantity: true },
+    });
+    const durationSeconds = bookable.reservationRule?.fixedDuration ?? null;
+    const slots = durationSeconds
+      ? intervals.flatMap((interval) =>
+          createSlots(interval.startAt, interval.endAt, durationSeconds).filter(
+            ({ startAt, endAt }) =>
+              isWithinAdvanceTime(
+                bookable.reservationRule,
+                startAt,
+                new Date(),
+              ) &&
+              reservations.reduce(
+                (total, reservation) =>
+                  reservation.startAt < endAt && reservation.endAt > startAt
+                    ? total + reservation.quantity
+                    : total,
+                0,
+              ) +
+                input.quantity <=
+                bookable.capacity,
+          ),
+        )
+      : [];
+
+    return {
+      date: input.date,
+      timezone: bookable.organization.timezone,
+      capacity: bookable.capacity,
+      durationMode: bookable.reservationRule?.durationMode ?? null,
+      durationSeconds,
+      intervals,
+      slots,
+      reason: durationSeconds
+        ? undefined
+        : "FLEXIBLE_DURATION_REQUIRES_END_TIME",
+    };
+  }
+
   private async findPublishedBookable<T extends Prisma.BookableSelect>(
     slug: string,
     select: T,
@@ -172,6 +261,37 @@ export class PublicBookingService {
       throw new ConflictException("Reservation exceeds maximum advance time");
     }
   }
+}
+
+function createSlots(startAt: Date, endAt: Date, durationSeconds: number) {
+  const slots: { startAt: Date; endAt: Date }[] = [];
+  const duration = durationSeconds * 1000;
+  for (
+    let cursor = startAt.getTime();
+    cursor + duration <= endAt.getTime();
+    cursor += duration
+  ) {
+    slots.push({
+      startAt: new Date(cursor),
+      endAt: new Date(cursor + duration),
+    });
+  }
+  return slots;
+}
+
+function isWithinAdvanceTime(
+  rule: BookableReservationRule | null,
+  startAt: Date,
+  now: Date,
+) {
+  if (!rule) return false;
+  const secondsUntilStart = (startAt.getTime() - now.getTime()) / 1000;
+  return (
+    (rule.minimumAdvanceTime === null ||
+      secondsUntilStart >= rule.minimumAdvanceTime) &&
+    (rule.maximumAdvanceTime === null ||
+      secondsUntilStart <= rule.maximumAdvanceTime)
+  );
 }
 
 function parseTimestamp(value: string, field: string): Date {

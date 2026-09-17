@@ -55,7 +55,7 @@ export default function DashboardPage() {
           setError(
             caught instanceof ApiError
               ? caught.message
-              : "Unable to load your organizations.",
+              : "Unable to load your workspaces.",
           );
       })
       .finally(() => {

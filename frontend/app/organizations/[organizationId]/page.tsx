@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { use } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -90,14 +91,15 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
     <PageContainer>
       <main className="px-0 py-0">
         <Link
-          className="text-sm font-semibold text-teal-700 hover:underline"
+          className="mb-8 flex min-h-11 w-fit items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
           href="/dashboard"
         >
-          ← Back to organizations
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Back to workspaces
         </Link>
         {loading && (
           <p className="mt-10 text-sm text-slate-500">
-            Loading organization...
+            Loading workspace...
           </p>
         )}
         {!loading && errorStatus === 403 && (
@@ -106,7 +108,7 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
               Access denied
             </p>
             <h1 className="mt-3 text-3xl font-bold">
-              You cannot access this organization.
+              You cannot access this workspace.
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-500">
               Your account does not have permission to view this workspace.
@@ -116,13 +118,13 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
         {!loading && errorStatus === 404 && (
           <section className="mt-10 max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-700">
-              Organization not found
+              Workspace not found
             </p>
             <h1 className="mt-3 text-3xl font-bold">
               This workspace is unavailable.
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-500">
-              The organization may not exist, or you may no longer belong to it.
+              The workspace may not exist, or you may no longer belong to it.
             </p>
           </section>
         )}

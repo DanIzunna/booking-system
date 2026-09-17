@@ -36,6 +36,21 @@ export class ReservationsController {
     return this.reservations.create(request.user.id, bookableId, input);
   }
 
+  @Post("reservations/:reservationId/confirm-free")
+  @ApiOperation({
+    summary: "Confirm an authenticated customer's free reservation",
+  })
+  @ApiParam({ name: "reservationId", format: "uuid" })
+  confirmFree(
+    @Req() request: AuthenticatedRequest,
+    @Param("reservationId") reservationId: string,
+  ) {
+    return this.reservations.confirmFreeReservation(
+      request.user.id,
+      reservationId,
+    );
+  }
+
   @Get("reservations/:reservationId")
   @ApiOperation({ summary: "Get the authenticated customer's reservation" })
   @ApiParam({ name: "reservationId", format: "uuid" })

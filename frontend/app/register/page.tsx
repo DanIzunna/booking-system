@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../lib/api/client";
@@ -48,27 +49,36 @@ export default function RegisterPage() {
     );
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[440px] flex-col justify-center">
+    <main className="flex min-h-screen flex-col bg-slate-50 px-4 sm:px-6">
+      <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between">
         <Link
           href="/"
-          className="mx-auto flex items-center gap-2 text-[13px] font-semibold text-slate-950"
+          className="flex items-center gap-2 text-[13px] font-semibold text-slate-950"
         >
           <span className="grid size-7 place-items-center rounded-[6px] bg-zinc-950 text-xs font-bold text-white">
             B
-          </span>{" "}
+          </span>
           Bookable
         </Link>
-        <section className="mt-7 rounded-[8px] border border-slate-200 bg-white p-6 sm:p-8">
-          <div className="text-center">
+        <Link
+          href="/"
+          className="inline-flex min-h-11 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Back to Bookable
+        </Link>
+      </header>
+      <div className="flex flex-1 items-center justify-center py-10 sm:py-14">
+        <section className="w-full max-w-[440px] px-1 py-6 sm:px-0">
+          <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
               Create your account
             </p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
-              Create your Bookable account
+              Create your workspace
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Start with an identity, then create or join a workspace
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Set up resources your customers can book and manage them from one place.
             </p>
           </div>
           <form className="mt-7 grid gap-5" onSubmit={handleSubmit}>
@@ -129,6 +139,9 @@ export default function RegisterPage() {
           </p>
         </section>
       </div>
+      <footer className="mx-auto flex w-full max-w-6xl justify-center py-6 text-xs text-slate-400">
+        © 2026 Bookable
+      </footer>
     </main>
   );
 }

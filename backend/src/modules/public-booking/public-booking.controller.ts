@@ -7,6 +7,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { PublicAvailabilityCheckDto } from "./dto/public-availability-check.dto";
+import { PublicAvailabilityDto } from "./dto/public-availability.dto";
 import { PublicBookingService } from "./public-booking.service";
 
 @Controller("public/bookables")
@@ -37,5 +38,29 @@ export class PublicBookingController {
     @Query() query: PublicAvailabilityCheckDto,
   ) {
     return this.publicBooking.checkAvailability(slug, query);
+  }
+
+  @Get(":slug/availability")
+  @ApiOperation({
+    summary: "Get public booking availability for a workspace date",
+  })
+  @ApiParam({ name: "slug", example: "my-consultation" })
+  @ApiQuery({
+    name: "date",
+    required: true,
+    type: String,
+    example: "2026-09-20",
+  })
+  @ApiQuery({ name: "quantity", required: false, type: Number, example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: "Authoritative public availability",
+  })
+  @ApiResponse({ status: 404, description: "Published Bookable not found" })
+  getAvailability(
+    @Param("slug") slug: string,
+    @Query() query: PublicAvailabilityDto,
+  ) {
+    return this.publicBooking.getAvailability(slug, query);
   }
 }

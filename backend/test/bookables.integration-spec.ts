@@ -141,6 +141,77 @@ describe("Bookables (integration)", () => {
       .expect(400);
   });
 
+  it("configures reservation rules and requires one before publishing", async () => {
+    const withoutRule = await createBookable(owner, organization.id, {
+      name: "Rule Validation Room",
+      slug: uniqueSlug("rule-validation"),
+      capacity: 1,
+    });
+    bookableIds.push(withoutRule.id);
+
+    expect(withoutRule).toEqual(
+      expect.objectContaining({ reservationRule: null, status: "DRAFT" }),
+    );
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${withoutRule.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        reservationRule: {
+          durationMode: "FIXED",
+          fixedDuration: 0,
+        },
+      })
+      .expect(400);
+
+    const configured = await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${withoutRule.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        reservationRule: {
+          durationMode: "FIXED",
+          fixedDuration: 3600,
+        },
+      })
+      .expect(200);
+    expect(configured.body.reservationRule).toEqual(
+      expect.objectContaining({
+        durationMode: "FIXED",
+        fixedDuration: 3600,
+      }),
+    );
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${withoutRule.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({ status: "PUBLISHED" })
+      .expect(200);
+
+    const missingRule = await createBookable(owner, organization.id, {
+      name: "Missing Rule Room",
+      slug: uniqueSlug("missing-rule"),
+      capacity: 1,
+    });
+    bookableIds.push(missingRule.id);
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${missingRule.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({ status: "PUBLISHED" })
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Direct Published Without Rule",
+        slug: uniqueSlug("direct-published-without-rule"),
+        capacity: 1,
+        status: "PUBLISHED",
+      })
+      .expect(409);
+  });
+
   it("rejects a duplicate global slug", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/bookables")

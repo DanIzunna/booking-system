@@ -29,6 +29,25 @@ const reservationSelect = {
   updatedAt: true,
 } satisfies Prisma.ReservationSelect;
 
+const customerReservationSelect = {
+  id: true,
+  bookableId: true,
+  startAt: true,
+  endAt: true,
+  quantity: true,
+  amount: true,
+  currency: true,
+  status: true,
+  expiresAt: true,
+  updatedAt: true,
+  bookable: {
+    select: {
+      name: true,
+      organization: { select: { name: true, timezone: true } },
+    },
+  },
+} satisfies Prisma.ReservationSelect;
+
 @Injectable()
 export class ReservationsService {
   constructor(
@@ -148,13 +167,25 @@ export class ReservationsService {
     return this.prisma.$transaction(async (transaction) => {
       const reservation = await transaction.reservation.findFirst({
         where: { id: reservationId, customerId },
-        select: { id: true, amount: true, status: true, expiresAt: true },
+        select: customerReservationSelect,
       });
       if (!reservation) throw new NotFoundException("Reservation not found");
       if (reservation.amount !== 0) {
         throw new ConflictException("Reservation requires payment");
       }
-      return this.confirmFromPayment(transaction, reservationId);
+      if (reservation.status === ReservationStatus.CONFIRMED)
+        return reservation;
+      if (reservation.status !== ReservationStatus.PENDING) {
+        throw new ConflictException("Reservation cannot be confirmed");
+      }
+      if (reservation.expiresAt && reservation.expiresAt <= new Date()) {
+        throw new ConflictException("Reservation has expired");
+      }
+      return transaction.reservation.update({
+        where: { id: reservationId },
+        data: { status: ReservationStatus.CONFIRMED },
+        select: customerReservationSelect,
+      });
     });
   }
 

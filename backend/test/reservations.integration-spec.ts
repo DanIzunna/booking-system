@@ -112,6 +112,50 @@ describe("Reservations (integration)", () => {
     );
   });
 
+  it("confirms only the authenticated customer's free reservation", async () => {
+    const bookable = await createBookable({ capacity: 2 });
+    const created = await createReservation(customer, bookable);
+    const reservationId = created.body.id as string;
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/reservations/${reservationId}/confirm-free`)
+      .set("Authorization", `Bearer ${secondCustomer.accessToken}`)
+      .expect(404);
+
+    const confirmed = await request(app.getHttpServer())
+      .post(`/api/v1/reservations/${reservationId}/confirm-free`)
+      .set("Authorization", `Bearer ${customer.accessToken}`)
+      .expect(201);
+    expect(confirmed.body).toEqual(
+      expect.objectContaining({
+        id: reservationId,
+        status: "CONFIRMED",
+        amount: 0,
+      }),
+    );
+
+    const repeated = await request(app.getHttpServer())
+      .post(`/api/v1/reservations/${reservationId}/confirm-free`)
+      .set("Authorization", `Bearer ${customer.accessToken}`)
+      .expect(201);
+    expect(repeated.body).toEqual(
+      expect.objectContaining({ id: reservationId, status: "CONFIRMED" }),
+    );
+  });
+
+  it("does not allow paid reservations through free confirmation", async () => {
+    const bookable = await createBookable({ capacity: 2 });
+    await prisma.bookable.update({
+      where: { id: bookable.id },
+      data: { price: 1000 },
+    });
+    const created = await createReservation(customer, bookable);
+    await request(app.getHttpServer())
+      .post(`/api/v1/reservations/${created.body.id}/confirm-free`)
+      .set("Authorization", `Bearer ${customer.accessToken}`)
+      .expect(409);
+  });
+
   it("rejects DRAFT and ARCHIVED Bookables", async () => {
     const draft = await createBookable({ status: BookableStatus.DRAFT });
     await createReservation(customer, draft, 409);

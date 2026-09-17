@@ -39,21 +39,21 @@ export function ProductPreview() {
             <span className="h-2 rounded-full bg-slate-950" />
           </div>
           <div className="mt-5 flex items-center gap-3 rounded-[6px] border border-slate-200 bg-white px-3 py-3 text-sm">
-            <CalendarDays className="size-4 text-slate-500" />
+            <CalendarDays className="size-4 text-slate-500" aria-hidden="true" />
             <span className="font-medium text-slate-800">09:00 – 17:00</span>
             <span className="ml-auto text-xs text-slate-500">Africa/Lagos</span>
           </div>
         </div>
         <div className="grid content-start gap-3">
           <div className="flex items-center gap-3 rounded-[6px] border border-slate-200 px-3 py-3">
-            <UsersRound className="size-4 text-slate-500" />
+            <UsersRound className="size-4 text-slate-500" aria-hidden="true" />
             <span className="text-xs text-slate-500">Capacity</span>
             <strong className="ml-auto text-sm tabular-nums text-slate-950">
               1
             </strong>
           </div>
           <div className="flex items-center gap-3 rounded-[6px] border border-slate-200 px-3 py-3">
-            <Globe2 className="size-4 text-slate-500" />
+            <Globe2 className="size-4 text-slate-500" aria-hidden="true" />
             <span className="text-xs text-slate-500">Public link</span>
             <strong className="ml-auto truncate text-xs font-medium text-slate-950">
               /book/consultation-session
@@ -61,7 +61,7 @@ export function ProductPreview() {
           </div>
           <Separator />
           <button className="flex min-h-10 items-center justify-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50">
-            <Copy className="size-3.5" /> Copy link
+            <Copy className="size-3.5" aria-hidden="true" /> Copy link
           </button>
         </div>
       </CardContent>

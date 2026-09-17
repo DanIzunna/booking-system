@@ -13,6 +13,24 @@ interface Interval {
 
 @Injectable()
 export class AvailabilityEngineService {
+  async intervalsForDate(
+    date: string,
+    timezone: string,
+    windows: AvailabilityWindow[],
+    exceptions: AvailabilityException[],
+  ) {
+    const startAt = localTimeToInstant(date, "00:00", timezone);
+    const nextDate = new Date(`${date}T12:00:00Z`);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    const endAt = localTimeToInstant(
+      nextDate.toISOString().slice(0, 10),
+      "00:00",
+      timezone,
+    );
+    return (await this.check(startAt, endAt, timezone, windows, exceptions))
+      .intervals;
+  }
+
   async check(
     startAt: Date,
     endAt: Date,
@@ -184,7 +202,7 @@ function weekdayForLocalDate(date: string, timezone: string): number {
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
 }
 
-function localTimeToInstant(
+export function localTimeToInstant(
   date: string,
   time: string,
   timezone: string,

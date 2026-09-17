@@ -1,6 +1,28 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("public product surfaces", () => {
+  test("public booking shows a friendly missing-bookable state", async ({
+    page,
+  }) => {
+    await page.goto("/book/missing-stage-7-bookable");
+    await expect(
+      page.getByRole("heading", { name: "This booking page is unavailable" }),
+    ).toBeVisible();
+    await expect(page.getByText(/ask the organizer/i)).toBeVisible();
+    await expect(page.getByText(/Bookable not found/i)).toHaveCount(0);
+  });
+
+  test("public booking explains missing reservation configuration", async ({
+    page,
+  }) => {
+    await page.goto("/book/windhoek-hall");
+    await page.getByRole("textbox", { name: "Select a date" }).fill("2026-09-17");
+    await expect(
+      page.getByText(/organizer has not finished configuring booking times/i),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+  });
+
   test("landing page presents product navigation and no runtime errors", async ({
     page,
   }) => {
@@ -26,7 +48,7 @@ test.describe("public product surfaces", () => {
 
     await page.goto("/register");
     await expect(
-      page.getByRole("heading", { name: /create your bookable account/i }),
+      page.getByRole("heading", { name: /create your workspace/i }),
     ).toBeVisible();
     await expect(page.getByLabel("Name")).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();

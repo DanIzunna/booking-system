@@ -1,4 +1,5 @@
 import { Transform, Type } from "class-transformer";
+import { ValidateNested } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { BookableStatus } from "@prisma/client";
 import {
@@ -11,6 +12,7 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
+import { ReservationRuleDto } from "./reservation-rule.dto";
 
 export class UpdateBookableDto {
   @ApiPropertyOptional({ example: "Updated Conference Room" })
@@ -48,4 +50,10 @@ export class UpdateBookableDto {
   @IsInt()
   @Min(1)
   capacity?: number;
+
+  @ApiPropertyOptional({ type: ReservationRuleDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ReservationRuleDto)
+  reservationRule?: ReservationRuleDto;
 }

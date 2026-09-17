@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, UserRound } from "lucide-react";
+import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "../../lib/auth/session-provider";
+import { ProfileMenu } from "./profile-menu";
 
 export function PublicHeader() {
   const pathname = usePathname();
@@ -24,7 +25,7 @@ export function PublicHeader() {
           </span>{" "}
           Bookable
         </Link>
-        <div className="hidden items-center gap-7 text-[13px] font-medium text-zinc-600 md:flex">
+        <div className="hidden items-center gap-3 text-[13px] font-medium text-zinc-600 md:flex">
           {!authenticated && (
             <>
               <a href="#how-it-works">How it works</a>
@@ -40,15 +41,9 @@ export function PublicHeader() {
               >
                 Dashboard
               </Link>
-              <span className="flex items-center gap-2 border-l border-zinc-200 pl-5">
-                <UserRound className="size-4" /> {user.name}
+              <span className="border-l border-zinc-200 pl-3">
+                <ProfileMenu user={user} logout={logout} />
               </span>
-              <button
-                className="font-semibold text-red-700 hover:text-red-800"
-                onClick={() => void logout()}
-              >
-                Sign out
-              </button>
             </>
           )}
         </div>
@@ -68,17 +63,10 @@ export function PublicHeader() {
             </Link>
           </div>
         )}
-        {authenticated && (
-          <Link
-            className="hidden rounded-full bg-zinc-950 px-4 py-2.5 text-[13px] font-semibold text-white md:block"
-            href="/dashboard"
-          >
-            Open dashboard
-          </Link>
-        )}
         <button
           className="rounded-md p-2 text-zinc-700 md:hidden"
-          aria-label="Open navigation"
+          aria-label={open ? "Close navigation" : "Open navigation"}
+          aria-expanded={open ? "true" : "false"}
           onClick={() => setOpen(!open)}
         >
           <Menu className="size-5" />
@@ -95,12 +83,9 @@ export function PublicHeader() {
               >
                 Dashboard
               </Link>
-              <button
-                className="block py-2 text-sm font-medium text-red-700"
-                onClick={() => void logout()}
-              >
-                Sign out
-              </button>
+              <div className="mt-2 border-t border-zinc-200 pt-3">
+                <ProfileMenu user={user} logout={logout} mobile />
+              </div>
             </>
           ) : (
             <>

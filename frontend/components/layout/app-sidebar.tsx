@@ -5,6 +5,8 @@ import {
   ChevronRight,
   ClipboardList,
   LayoutDashboard,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings2,
 } from "lucide-react";
 import Link from "next/link";
@@ -14,9 +16,16 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 interface AppSidebarProps {
   organizationId?: string;
   onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function AppSidebar({ organizationId, onNavigate }: AppSidebarProps) {
+export function AppSidebar({
+  organizationId,
+  onNavigate,
+  collapsed = false,
+  onToggleCollapse,
+}: AppSidebarProps) {
   const pathname = usePathname();
   const items = organizationId
     ? [
@@ -34,43 +43,79 @@ export function AppSidebar({ organizationId, onNavigate }: AppSidebarProps) {
     : [{ label: "Overview", href: "/dashboard", icon: LayoutDashboard }];
 
   return (
-    <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-slate-200 bg-white px-3 py-4">
-      <div className="mb-5 px-1">
-        <WorkspaceSwitcher
-          organizationId={organizationId}
-          onNavigate={onNavigate}
-        />
+    <aside
+      className={`flex h-full ${collapsed ? "w-16" : "w-[240px]"} shrink-0 flex-col border-r border-slate-200 bg-white px-2 py-4`}
+    >
+      <div className={`mb-4 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
+        {!collapsed && (
+          <div className="min-w-0 flex-1 px-1">
+            <WorkspaceSwitcher
+              organizationId={organizationId}
+              onNavigate={onNavigate}
+            />
+          </div>
+        )}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            className={`grid place-items-center rounded-[6px] border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 ${collapsed ? "size-9" : "size-8"}`}
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-4" />
+            ) : (
+              <PanelLeftClose className="size-4" />
+            )}
+          </button>
+        )}
       </div>
       <nav className="space-y-1" aria-label="Workspace navigation">
-        {items.map(({ label, href, icon: Icon }) => (
-          <Link
-            className={navClass(
-              pathname === href ||
-                (label === "Bookables" && pathname.includes("/bookables")),
-            )}
-            href={href}
-            key={href}
-            onClick={onNavigate}
-          >
-            <Icon className="size-4" />
-            {label}
-            <ChevronRight className="ml-auto size-3.5 opacity-50" />
-          </Link>
-        ))}
+        {items.map(({ label, href, icon: Icon }) => {
+          const active =
+            pathname === href ||
+            (label === "Bookables" && pathname.includes("/bookables"));
+
+          return (
+            <Link
+              className={navClass(active, collapsed)}
+              href={href}
+              key={href}
+              onClick={onNavigate}
+              title={label}
+              aria-label={label}
+            >
+              <Icon className="size-4 shrink-0" />
+              {!collapsed && <span className="truncate">{label}</span>}
+              {!collapsed && <ChevronRight className="ml-auto size-3.5 opacity-50" />}
+              {collapsed && <span className="sr-only">{label}</span>}
+            </Link>
+          );
+        })}
         {organizationId && (
           <>
-            <span className="mt-6 block px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
-              Coming later
-            </span>
-            <span className="flex min-h-10 items-center gap-3 rounded-[6px] px-3 text-[13px] text-slate-400">
-              <CalendarDays className="size-4" /> Schedule
-            </span>
-            <span className="flex min-h-10 items-center gap-3 rounded-[6px] px-3 text-[13px] text-slate-400">
-              <ClipboardList className="size-4" /> Reservations
-            </span>
-            <span className="flex min-h-10 items-center gap-3 rounded-[6px] px-3 text-[13px] text-slate-400">
-              <Settings2 className="size-4" /> Settings
-            </span>
+            {!collapsed && (
+              <span className="mt-6 block px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                Coming later
+              </span>
+            )}
+            {[
+              { label: "Schedule", icon: CalendarDays },
+              { label: "Reservations", icon: ClipboardList },
+              { label: "Settings", icon: Settings2 },
+            ].map(({ label, icon: Icon }) => (
+              <span
+                className={navClass(false, collapsed, true)}
+                key={label}
+                title={label}
+                aria-label={label}
+              >
+                <Icon className="size-4 shrink-0" />
+                {!collapsed && <span className="truncate">{label}</span>}
+                {collapsed && <span className="sr-only">{label}</span>}
+              </span>
+            ))}
           </>
         )}
       </nav>
@@ -78,6 +123,12 @@ export function AppSidebar({ organizationId, onNavigate }: AppSidebarProps) {
   );
 }
 
-function navClass(active: boolean) {
-  return `flex min-h-10 items-center gap-3 rounded-[6px] px-3 text-[13px] font-medium ${active ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`;
+function navClass(active: boolean, collapsed: boolean, subdued = false) {
+  return `flex min-h-10 items-center ${collapsed ? "justify-center px-0" : "gap-3 px-3"} rounded-[6px] text-[13px] font-medium ${
+    active
+      ? "bg-slate-100 text-slate-950"
+      : subdued
+        ? "text-slate-400"
+        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+  }`;
 }

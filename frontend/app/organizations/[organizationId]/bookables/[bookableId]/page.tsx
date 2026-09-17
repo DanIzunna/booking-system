@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Archive, ArrowLeft, ArrowRight, Pencil } from "lucide-react";
 import { FormEvent, use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../../../../lib/api/client";
@@ -15,6 +16,9 @@ import type { Bookable, BookableStatus } from "../../../../../types/bookables";
 import type { MembershipRole } from "../../../../../types/organizations";
 import styles from "../../../../dashboard.module.css";
 import { PageContainer } from "../../../../../components/layout/page-container";
+import { BookableStatus as BookableStatusBadge } from "../../../../../components/bookables/bookable-status";
+import { PublicBookingLink } from "../../../../../components/bookables/public-booking-link";
+import { Button } from "../../../../../components/ui/button";
 
 interface BookablePageProps {
   params: Promise<{ organizationId: string; bookableId: string }>;
@@ -31,8 +35,12 @@ export default function BookablePage({ params }: BookablePageProps) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [slug, setSlug] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [durationMode, setDurationMode] = useState<"FIXED" | "FLEXIBLE">("FIXED");
+  const [fixedDuration, setFixedDuration] = useState("3600");
+  const [minimumDuration, setMinimumDuration] = useState("");
+  const [maximumDuration, setMaximumDuration] = useState("");
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [mutationError, setMutationError] = useState("");
   const [pendingAction, setPendingAction] = useState("");
   const loading = status === "authenticated" && !loaded;
@@ -59,8 +67,11 @@ export default function BookablePage({ params }: BookablePageProps) {
         );
         setName(nextBookable.name);
         setDescription(nextBookable.description ?? "");
-        setSlug(nextBookable.slug);
         setCapacity(String(nextBookable.capacity));
+        setDurationMode(nextBookable.reservationRule?.durationMode ?? "FIXED");
+        setFixedDuration(String(nextBookable.reservationRule?.fixedDuration ?? 3600));
+        setMinimumDuration(String(nextBookable.reservationRule?.minimumDuration ?? ""));
+        setMaximumDuration(String(nextBookable.reservationRule?.maximumDuration ?? ""));
         setLoaded(true);
       })
       .catch((caught) => {
@@ -81,8 +92,16 @@ export default function BookablePage({ params }: BookablePageProps) {
       const updated = await updateBookable(bookableId, {
         name: name.trim(),
         description: description.trim() || undefined,
-        slug: slug.trim(),
         capacity: Number(capacity),
+        reservationRule: {
+          durationMode,
+          ...(durationMode === "FIXED"
+            ? { fixedDuration: Number(fixedDuration) }
+            : {
+                ...(minimumDuration ? { minimumDuration: Number(minimumDuration) } : {}),
+                ...(maximumDuration ? { maximumDuration: Number(maximumDuration) } : {}),
+              }),
+        },
       });
       setBookable(updated);
       setEditing(false);
@@ -100,11 +119,6 @@ export default function BookablePage({ params }: BookablePageProps) {
   async function handleStatus(statusValue: BookableStatus) {
     if (!bookable) return;
     const label = statusValue === "PUBLISHED" ? "publish" : "archive";
-    if (
-      statusValue === "ARCHIVED" &&
-      !window.confirm("Archive this bookable? It will no longer be active.")
-    )
-      return;
     setMutationError("");
     setPendingAction(label);
     try {
@@ -128,6 +142,8 @@ export default function BookablePage({ params }: BookablePageProps) {
     }
   }
 
+  const canPublish = Boolean(bookable?.reservationRule);
+
   if (status === "loading")
     return (
       <main className="min-h-screen bg-slate-50 p-10 text-sm text-slate-500">
@@ -140,10 +156,11 @@ export default function BookablePage({ params }: BookablePageProps) {
     <PageContainer>
       <main className="px-0 py-0">
         <Link
-          className={styles.backLink}
+          className="mb-8 flex min-h-11 w-fit items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
           href={`/organizations/${organizationId}/bookables`}
         >
-          Back to bookables
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <span>Back to bookables</span>
         </Link>
         {loading && <p className={styles.message}>Loading bookable...</p>}
         {!loading && errorStatus === 403 && (
@@ -155,7 +172,7 @@ export default function BookablePage({ params }: BookablePageProps) {
         {!loading && errorStatus === 404 && (
           <ErrorState
             title="Bookable not found"
-            message="This resource is unavailable or does not belong to this organization."
+            message="This resource is unavailable or does not belong to this workspace."
           />
         )}
         {!loading &&
@@ -175,7 +192,7 @@ export default function BookablePage({ params }: BookablePageProps) {
                 <h1>{bookable.name}</h1>
                 <p className={styles.slug}>{bookable.slug}</p>
               </div>
-              <span className={styles.statusLabel}>{bookable.status}</span>
+              <BookableStatusBadge status={bookable.status} />
             </div>
             <div className={styles.details}>
               <span>Capacity</span>
@@ -184,31 +201,57 @@ export default function BookablePage({ params }: BookablePageProps) {
             <p className={styles.description}>
               {bookable.description || "No description provided."}
             </p>
-            <Link
-              className={styles.actionLink}
-              href={`/organizations/${organizationId}/bookables/${bookableId}/availability`}
-            >
-              Configure availability
-            </Link>
+            <section className={styles.availabilitySection}><p className={styles.sectionLabel}>Availability</p><h2>Configure when customers can reserve</h2><p className={styles.message}>Availability is managed separately from Bookable details.</p><Link className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950" href={`/organizations/${organizationId}/bookables/${bookableId}/availability`}><span>Manage availability</span><ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></section>
+            <section className={styles.availabilitySection}><p className={styles.sectionLabel}>Public booking</p><h2>Share this Bookable</h2><p className={styles.message}>Customers can use this link to make reservations once the Bookable is published.</p><PublicBookingLink slug={bookable.slug} enabled={bookable.status === "PUBLISHED"} /></section>
             {mutationError && (
               <p className={styles.error} role="alert">
                 {mutationError}
               </p>
             )}
+            {confirmArchive && (
+              <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
+                <p className="text-sm font-semibold text-rose-900">Archive this bookable?</p>
+                <p className="mt-2 text-sm text-rose-700">
+                  It will no longer be active for reservations.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    className="min-h-10 rounded-[6px] border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                    type="button"
+                    onClick={() => setConfirmArchive(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="min-h-10 rounded-[6px] border border-rose-200 bg-rose-600 px-4 text-[13px] font-medium text-white hover:bg-rose-500"
+                    type="button"
+                    onClick={() => {
+                      setConfirmArchive(false);
+                      void handleStatus("ARCHIVED");
+                    }}
+                  >
+                    Archive
+                  </button>
+                </div>
+              </div>
+            )}
             {canManage && !editing && (
               <div className={styles.actionRow}>
-                <button
-                  className={styles.primaryButton}
+                <Button
                   type="button"
+                  className="min-h-11 min-w-11 px-3 sm:min-h-10 sm:min-w-0 sm:px-4"
                   onClick={() => setEditing(true)}
+                  aria-label="Edit details"
+                  title="Edit details"
                 >
-                  Edit bookable
-                </button>
+                  <Pencil className="size-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">Edit details</span>
+                </Button>
                 {bookable.status === "DRAFT" && (
                   <button
-                    className={styles.secondaryButton}
+                    className={styles.primaryButton}
                     type="button"
-                    disabled={Boolean(pendingAction)}
+                    disabled={Boolean(pendingAction) || !canPublish}
                     onClick={() => void handleStatus("PUBLISHED")}
                   >
                     {pendingAction === "publish" ? "Publishing..." : "Publish"}
@@ -216,15 +259,26 @@ export default function BookablePage({ params }: BookablePageProps) {
                 )}
                 {bookable.status !== "ARCHIVED" && (
                   <button
-                    className={styles.dangerButton}
+                    className={`${styles.dangerButton} inline-flex min-h-11 min-w-11 items-center justify-center gap-2 px-3 sm:min-h-10 sm:min-w-0 sm:px-4`}
                     type="button"
                     disabled={Boolean(pendingAction)}
-                    onClick={() => void handleStatus("ARCHIVED")}
+                    onClick={() => setConfirmArchive(true)}
+                    aria-label="Archive bookable"
+                    title="Archive bookable"
                   >
+                    <Archive className="size-4" aria-hidden="true" />
+                    <span className="hidden sm:inline">
                     {pendingAction === "archive" ? "Archiving..." : "Archive"}
+                    </span>
                   </button>
                 )}
               </div>
+            )}
+            {canManage && bookable.status === "DRAFT" && !canPublish && (
+              <p className={styles.note} role="status">
+                Configure a reservation length before publishing this Bookable.
+                Use Edit details to add one.
+              </p>
             )}
             {editing && canManage && (
               <form className={styles.bookableForm} onSubmit={handleUpdate}>
@@ -236,15 +290,16 @@ export default function BookablePage({ params }: BookablePageProps) {
                     required
                   />
                 </label>
-                <label className={styles.formField}>
-                  Slug
+                <div className={styles.formField}>
+                  <span>Slug</span>
                   <input
-                    value={slug}
-                    onChange={(event) => setSlug(event.target.value)}
-                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                    required
+                    value={bookable?.slug ?? ""}
+                    readOnly
+                    aria-readonly="true"
+                    className="cursor-not-allowed bg-slate-50 text-slate-500"
                   />
-                </label>
+                  <small>Public URL stays stable even if the bookable name changes.</small>
+                </div>
                 <label className={styles.formField}>
                   Description
                   <textarea
@@ -264,6 +319,52 @@ export default function BookablePage({ params }: BookablePageProps) {
                     required
                   />
                 </label>
+                <fieldset className={styles.formField}>
+                  <legend>Reservation duration</legend>
+                  <select
+                    value={durationMode}
+                    onChange={(event) =>
+                      setDurationMode(event.target.value as "FIXED" | "FLEXIBLE")
+                    }
+                  >
+                    <option value="FIXED">Fixed duration</option>
+                    <option value="FLEXIBLE">Flexible duration</option>
+                  </select>
+                  {durationMode === "FIXED" ? (
+                    <select
+                      aria-label="Reservation length"
+                      value={fixedDuration}
+                      onChange={(event) => setFixedDuration(event.target.value)}
+                    >
+                      <option value="1800">30 minutes</option>
+                      <option value="3600">60 minutes</option>
+                      <option value="5400">90 minutes</option>
+                      <option value="7200">120 minutes</option>
+                    </select>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        aria-label="Minimum duration in seconds"
+                        type="number"
+                        min="1"
+                        placeholder="Minimum seconds"
+                        value={minimumDuration}
+                        onChange={(event) => setMinimumDuration(event.target.value)}
+                      />
+                      <input
+                        aria-label="Maximum duration in seconds"
+                        type="number"
+                        min="1"
+                        placeholder="Maximum seconds"
+                        value={maximumDuration}
+                        onChange={(event) => setMaximumDuration(event.target.value)}
+                      />
+                    </div>
+                  )}
+                  <small>
+                    Fixed duration enables selectable public booking slots.
+                  </small>
+                </fieldset>
                 <div className={styles.actionRow}>
                   <button
                     className={styles.primaryButton}
@@ -284,7 +385,7 @@ export default function BookablePage({ params }: BookablePageProps) {
             )}
             {!canManage && (
               <p className={styles.note}>
-                Only organization owners can edit, publish, or archive
+                Only workspace owners can edit, publish, or archive
                 bookables.
               </p>
             )}
@@ -307,7 +408,7 @@ function ErrorState({ title, message }: { title: string; message: string }) {
 
 function formatMutationError(error: ApiError): string {
   if (error.statusCode === 403)
-    return "Only an organization owner can change this bookable.";
+    return "Only a workspace owner can change this bookable.";
   if (error.statusCode === 404) return "This bookable is no longer available.";
   if (error.statusCode === 409)
     return "That slug is already in use. Choose another one.";

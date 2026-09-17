@@ -83,6 +83,10 @@ describe("Public booking (integration)", () => {
 
   it("returns only published public-safe Bookable data anonymously", async () => {
     const fixture = await createBookable({ status: BookableStatus.PUBLISHED });
+    await prisma.bookable.update({
+      where: { id: fixture.id },
+      data: { price: 2500, currency: "NGN" },
+    });
     const response = await request(app.getHttpServer())
       .get(`/api/v1/public/bookables/${fixture.slug}`)
       .expect(200);
@@ -91,23 +95,68 @@ describe("Public booking (integration)", () => {
         id: fixture.id,
         slug: fixture.slug,
         name: expect.any(String),
-        organization: { id: organizationId, name: expect.any(String) },
+        status: "PUBLISHED",
+        price: 2500,
+        currency: "NGN",
+        organization: expect.objectContaining({
+          id: organizationId,
+          name: expect.any(String),
+          timezone: "Africa/Lagos",
+        }),
         reservationRule: expect.objectContaining({ durationMode: "FLEXIBLE" }),
       }),
     );
     expect(Object.keys(response.body).sort()).toEqual(
       [
         "capacity",
+        "currency",
         "description",
         "id",
         "name",
         "organization",
+        "price",
         "reservationRule",
         "slug",
+        "status",
       ].sort(),
     );
+    expect(response.body.organization.timezone).toBe("Africa/Lagos");
     expect(response.body.organization.memberships).toBeUndefined();
     expect(response.body.passwordHash).toBeUndefined();
+  });
+
+  it("returns fixed-duration slots for a workspace-local date and respects capacity", async () => {
+    const fixture = await createBookable({
+      capacity: 2,
+      durationMode: DurationMode.FIXED,
+      fixedDuration: 1800,
+    });
+    const date = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Lagos",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(fixture.startAt);
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/public/bookables/${fixture.slug}/availability`)
+      .query({ date, quantity: 1 })
+      .expect(200);
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        date,
+        timezone: "Africa/Lagos",
+        durationMode: "FIXED",
+        durationSeconds: 1800,
+      }),
+    );
+    expect(response.body.slots).toHaveLength(2);
+
+    await createReservation(fixture, ReservationStatus.CONFIRMED, 2);
+    const full = await request(app.getHttpServer())
+      .get(`/api/v1/public/bookables/${fixture.slug}/availability`)
+      .query({ date, quantity: 1 })
+      .expect(200);
+    expect(full.body.slots).toHaveLength(0);
   });
 
   it("hides draft, archived, and unknown Bookables", async () => {

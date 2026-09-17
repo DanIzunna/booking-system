@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { FormEvent, type MouseEvent, use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../../../../../lib/api/client";
@@ -39,7 +40,7 @@ import type {
   Organization,
 } from "../../../../../../types/organizations";
 import styles from "../../../../../dashboard.module.css";
-import { AppHeader } from "../../../../../../components/layout/app-header";
+import { PageContainer } from "../../../../../../components/layout/page-container";
 
 interface AvailabilityPageProps {
   params: Promise<{ organizationId: string; bookableId: string }>;
@@ -69,7 +70,10 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   const [pendingAction, setPendingAction] = useState("");
   const [windowType, setWindowType] =
     useState<AvailabilityWindowType>("RECURRING");
-  const [weekday, setWeekday] = useState("1");
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([
+    1, 2, 3, 4, 5,
+  ]);
+  const [weekday] = useState("1");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [specificDate, setSpecificDate] = useState("");
@@ -86,6 +90,11 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   const [duration, setDuration] = useState("60");
   const [checkResult, setCheckResult] =
     useState<AvailabilityCheckResult | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    kind: "window" | "exception";
+    id: string;
+    label: string;
+  } | null>(null);
   const loading = status === "authenticated" && !loaded;
   const canManage = role === "OWNER";
 
@@ -137,6 +146,15 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
     };
   }, [bookableId, organizationId, status]);
 
+  function toggleWeekday(day: number) {
+    setSelectedWeekdays((current) => {
+      if (current.includes(day)) {
+        return current.filter((value) => value !== day);
+      }
+      return [...current, day].sort((a, b) => a - b);
+    });
+  }
+
   async function handleCreateWindow(
     event: FormEvent<HTMLFormElement>,
     requestedType = (event.currentTarget.dataset.windowType as
@@ -150,9 +168,15 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
     event.preventDefault();
     setMutationError("");
     if (!organization) return;
-    if (requestedType === "RECURRING" && startTime >= endTime) {
-      setMutationError("End time must be after start time.");
-      return;
+    if (requestedType === "RECURRING") {
+      if (selectedWeekdays.length === 0) {
+        setMutationError("Select at least one day before applying a window.");
+        return;
+      }
+      if (startTime >= endTime) {
+        setMutationError("End time must be after start time.");
+        return;
+      }
     }
     const startLocal = `${specificDate}T${specificStartTime}`;
     const endLocal = `${specificDate}T${specificEndTime}`;
@@ -167,22 +191,29 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
     }
     setPendingAction("create-window");
     try {
-      const created = await createAvailabilityWindow(
-        bookableId,
-        requestedType === "RECURRING"
-          ? {
-              type: requestedType,
-              weekday: Number(weekday),
-              startTime,
-              endTime,
-            }
-          : {
-              type: requestedType,
-              startAt: localDateTimeToIso(startLocal, organization.timezone),
-              endAt: localDateTimeToIso(endLocal, organization.timezone),
-            },
+      const createdWindows = await Promise.all(
+        (requestedType === "RECURRING"
+          ? selectedWeekdays
+          : [Number(weekday)]
+        ).map((day) =>
+          createAvailabilityWindow(
+            bookableId,
+            requestedType === "RECURRING"
+              ? {
+                  type: requestedType,
+                  weekday: day,
+                  startTime,
+                  endTime,
+                }
+              : {
+                  type: requestedType,
+                  startAt: localDateTimeToIso(startLocal, organization.timezone),
+                  endAt: localDateTimeToIso(endLocal, organization.timezone),
+                },
+          ),
+        ),
       );
-      setWindows((current) => [...current, created]);
+      setWindows((current) => [...current, ...createdWindows]);
       setSpecificDate("");
     } catch (caught) {
       setMutationError(formatError(caught, "add this availability"));
@@ -219,7 +250,6 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   }
 
   async function handleDelete(kind: "window" | "exception", id: string) {
-    if (!window.confirm(`Remove this availability ${kind}?`)) return;
     setMutationError("");
     setPendingAction(`delete-${kind}`);
     try {
@@ -230,6 +260,7 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
         await deleteAvailabilityException(bookableId, id);
         setExceptions((current) => current.filter((item) => item.id !== id));
       }
+      setDeleteTarget(null);
     } catch (caught) {
       setMutationError(formatError(caught, `remove this ${kind}`));
     } finally {
@@ -279,14 +310,14 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AppHeader />
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <PageContainer>
+      <main className="px-0 py-2">
         <Link
-          className="text-sm font-semibold text-teal-700 hover:underline"
+          className="mb-8 flex min-h-11 w-fit items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
           href={`/organizations/${organizationId}/bookables/${bookableId}`}
         >
-          ← Back to bookable
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          <span>Back to bookable</span>
         </Link>
         {loading && (
           <p className="mt-10 text-sm text-slate-500">
@@ -306,7 +337,7 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
               errorStatus === 403
                 ? "You do not have permission to inspect this availability."
                 : errorStatus === 404
-                  ? "This bookable is unavailable or does not belong to this organization."
+                  ? "This bookable is unavailable or does not belong to this workspace."
                   : "Please try again shortly."
             }
           />
@@ -327,7 +358,7 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                  Organization timezone
+                  Workspace timezone
                 </p>
                 <p className="mt-2 font-semibold text-slate-800">
                   {formatTimeZoneName(organization.timezone)}
@@ -346,6 +377,35 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
               >
                 {mutationError}
               </p>
+            )}
+            {deleteTarget && (
+              <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
+                <p className="text-sm font-semibold text-rose-900">
+                  Remove {deleteTarget.kind === "window" ? "time window" : "exception"}?
+                </p>
+                <p className="mt-2 text-sm text-rose-700">{deleteTarget.label}</p>
+                <p className="mt-2 text-sm text-rose-700">
+                  This time window will no longer be available for reservations.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    className="min-h-10 rounded-[6px] border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                    type="button"
+                    onClick={() => setDeleteTarget(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="min-h-10 rounded-[6px] border border-rose-200 bg-rose-600 px-4 text-[13px] font-medium text-white hover:bg-rose-500"
+                    type="button"
+                    onClick={() => {
+                      void handleDelete(deleteTarget.kind, deleteTarget.id);
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
             )}
             <section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
               <div className="space-y-6">
@@ -377,13 +437,20 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                           </span>
                           {canManage && (
                             <button
-                              className="text-xs font-semibold text-rose-700"
+                              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
                               disabled={Boolean(pendingAction)}
+                              aria-label={`Remove ${weekdays[item.weekday ?? 0]} availability`}
+                              title="Remove availability"
                               onClick={() =>
-                                void handleDelete("window", item.id)
+                                setDeleteTarget({
+                                  kind: "window",
+                                  id: item.id,
+                                  label: `${weekdays[item.weekday ?? 0]} · ${formatLocalTime(item.startTime)}–${formatLocalTime(item.endTime)}`,
+                                })
                               }
                             >
-                              Remove
+                              <Trash2 className="size-4" aria-hidden="true" />
+                              <span className="hidden sm:inline">Remove</span>
                             </button>
                           )}
                         </div>
@@ -394,23 +461,36 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                       className="mt-6 grid gap-4 border-t border-slate-100 pt-5"
                       onSubmit={handleCreateWindow}
                     >
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <label className="space-y-2 text-sm font-semibold text-slate-700">
-                          Day
-                          <select
-                            className={styles.friendlyInput}
-                            value={weekday}
-                            onChange={(event) => setWeekday(event.target.value)}
-                          >
-                            <option value="0">Sunday</option>
-                            <option value="1">Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
-                          </select>
-                        </label>
+                      <div className="space-y-3">
+                        <p className="text-sm font-semibold text-slate-700">Days</p>
+                        <div className="flex flex-wrap gap-2">
+                          {weekdays.map((day, index) => (
+                            <button
+                              key={day}
+                              type="button"
+                              aria-label={`Toggle ${day}`}
+                              aria-pressed={selectedWeekdays.includes(index)}
+                              className={`min-h-10 rounded-full border px-3 text-xs font-medium transition-colors ${
+                                selectedWeekdays.includes(index)
+                                  ? "border-slate-900 bg-slate-900 text-white"
+                                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                              }`}
+                              onClick={() => toggleWeekday(index)}
+                            >
+                              {day.slice(0, 3)}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          {selectedWeekdays.length > 0
+                            ? selectedWeekdays
+                                .map((day) => weekdays[day].slice(0, 3))
+                                .join(" · ")
+                            : "Select one or more days."}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <label className="space-y-2 text-sm font-semibold text-slate-700">
                           Start
                           <input
@@ -434,14 +514,15 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                           />
                         </label>
                       </div>
+
                       <button
                         className={styles.primaryButton}
                         type="submit"
-                        disabled={Boolean(pendingAction)}
+                        disabled={Boolean(pendingAction) || selectedWeekdays.length === 0}
                       >
                         {pendingAction === "create-window"
                           ? "Adding..."
-                          : "Add availability"}
+                          : "Apply to selected days"}
                       </button>
                     </form>
                   )}
@@ -474,13 +555,20 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                           </span>
                           {canManage && (
                             <button
-                              className="text-xs font-semibold text-rose-700"
+                              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
                               disabled={Boolean(pendingAction)}
+                              aria-label="Remove specific availability"
+                              title="Remove availability"
                               onClick={() =>
-                                void handleDelete("window", item.id)
+                                setDeleteTarget({
+                                  kind: "window",
+                                  id: item.id,
+                                  label: `${formatZonedDateTime(item.startAt ?? "", organization.timezone)} – ${formatZonedDateTime(item.endAt ?? "", organization.timezone)}`,
+                                })
                               }
                             >
-                              Remove
+                              <Trash2 className="size-4" aria-hidden="true" />
+                              <span className="hidden sm:inline">Remove</span>
                             </button>
                           )}
                         </div>
@@ -582,13 +670,20 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                         </span>
                         {canManage && (
                           <button
-                            className="text-xs font-semibold text-rose-700"
+                            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
                             disabled={Boolean(pendingAction)}
+                            aria-label="Remove availability exception"
+                            title="Remove exception"
                             onClick={() =>
-                              void handleDelete("exception", item.id)
+                              setDeleteTarget({
+                                kind: "exception",
+                                id: item.id,
+                                label: `${item.type} · ${formatZonedDateTime(item.startAt, organization.timezone)} – ${formatZonedDateTime(item.endAt, organization.timezone)}`,
+                              })
                             }
                           >
-                            Remove
+                            <Trash2 className="size-4" aria-hidden="true" />
+                            <span className="hidden sm:inline">Remove</span>
                           </button>
                         )}
                       </div>
@@ -672,7 +767,7 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                   <h2 className="mt-2 text-xl font-semibold">Test a time</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
                     The backend evaluates your windows and exceptions in the
-                    organization timezone.
+                    workspace timezone.
                   </p>
                   <form className="mt-5 grid gap-4">
                     <label className="space-y-2 text-sm font-semibold text-slate-700">
@@ -744,7 +839,7 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
           </>
         )}
       </main>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -755,9 +850,9 @@ function formatError(caught: unknown, action: string) {
   if (!(caught instanceof ApiError))
     return `Unable to ${action}. Please try again.`;
   if (caught.statusCode === 403)
-    return "Only an organization owner can change availability.";
+    return "Only a workspace owner can change availability.";
   if (caught.statusCode === 404)
-    return "This organization or bookable is unavailable.";
+    return "This workspace or bookable is unavailable.";
   if (caught.statusCode === 409)
     return (
       caught.message ||

@@ -9,6 +9,7 @@ import { OrganizationAuthorizationService } from "../organizations/organization-
 import { CreateBookableDto } from "./dto/create-bookable.dto";
 import { ListBookablesDto } from "./dto/list-bookables.dto";
 import { UpdateBookableDto } from "./dto/update-bookable.dto";
+import { ReservationRuleDto } from "./dto/reservation-rule.dto";
 
 const bookableSelect = {
   id: true,
@@ -20,6 +21,7 @@ const bookableSelect = {
   capacity: true,
   createdAt: true,
   updatedAt: true,
+  reservationRule: true,
 } satisfies Prisma.BookableSelect;
 
 @Injectable()
@@ -36,6 +38,12 @@ export class BookablesService {
     );
 
     const baseSlug = input.slug ?? slugify(input.name);
+    validateReservationRule(input.reservationRule);
+    if (input.status === BookableStatus.PUBLISHED && !input.reservationRule) {
+      throw new ConflictException(
+        "A reservation rule is required before publishing a Bookable",
+      );
+    }
 
     for (let attempt = 0; attempt < 100; attempt += 1) {
       try {
@@ -47,6 +55,13 @@ export class BookablesService {
             slug: attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`,
             status: input.status ?? BookableStatus.DRAFT,
             capacity: input.capacity,
+            ...(input.reservationRule
+              ? {
+                  reservationRule: {
+                    create: reservationRuleData(input.reservationRule),
+                  },
+                }
+              : {}),
           },
           select: bookableSelect,
         });
@@ -102,6 +117,16 @@ export class BookablesService {
       userId,
       bookable.organizationId,
     );
+    validateReservationRule(input.reservationRule);
+    if (
+      input.status === BookableStatus.PUBLISHED &&
+      !input.reservationRule &&
+      !bookable.reservationRule
+    ) {
+      throw new ConflictException(
+        "A reservation rule is required before publishing a Bookable",
+      );
+    }
 
     try {
       return await this.prisma.bookable.update({
@@ -114,6 +139,16 @@ export class BookablesService {
           ...(input.slug === undefined ? {} : { slug: input.slug }),
           ...(input.status === undefined ? {} : { status: input.status }),
           ...(input.capacity === undefined ? {} : { capacity: input.capacity }),
+          ...(input.reservationRule
+            ? {
+                reservationRule: {
+                  upsert: {
+                    create: reservationRuleData(input.reservationRule),
+                    update: reservationRuleData(input.reservationRule),
+                  },
+                },
+              }
+            : {}),
         },
         select: bookableSelect,
       });
@@ -178,4 +213,39 @@ function slugify(value: string): string {
     .replace(/-+$/g, "");
 
   return slug || "bookable";
+}
+
+function validateReservationRule(rule?: ReservationRuleDto): void {
+  if (!rule) return;
+  if (rule.durationMode === "FIXED") {
+    if (!rule.fixedDuration || rule.fixedDuration <= 0) {
+      throw new ConflictException(
+        "Fixed reservation duration must be positive",
+      );
+    }
+    return;
+  }
+  if (
+    rule.minimumDuration !== undefined &&
+    rule.maximumDuration !== undefined &&
+    rule.minimumDuration > rule.maximumDuration
+  ) {
+    throw new ConflictException(
+      "Flexible reservation minimum duration cannot exceed maximum duration",
+    );
+  }
+}
+
+function reservationRuleData(rule: ReservationRuleDto) {
+  return {
+    durationMode: rule.durationMode,
+    fixedDuration: rule.durationMode === "FIXED" ? rule.fixedDuration : null,
+    minimumDuration:
+      rule.durationMode === "FLEXIBLE" ? rule.minimumDuration : null,
+    maximumDuration:
+      rule.durationMode === "FLEXIBLE" ? rule.maximumDuration : null,
+    minimumAdvanceTime: rule.minimumAdvanceTime,
+    maximumAdvanceTime: rule.maximumAdvanceTime,
+    cancellationDeadline: rule.cancellationDeadline,
+  };
 }
