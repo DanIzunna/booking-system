@@ -74,6 +74,9 @@ describe("Reservations (integration)", () => {
 
   afterAll(async () => {
     try {
+      await prisma.payment.deleteMany({
+        where: { reservation: { bookableId: { in: bookableIds } } },
+      });
       await prisma.reservation.deleteMany({
         where: { bookableId: { in: bookableIds } },
       });
@@ -527,6 +530,224 @@ describe("Reservations (integration)", () => {
       .expect(404);
   });
 
+  it("allows an organization member to approve a pending approval-required reservation", async () => {
+    const bookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const created = await createReservation(customer, bookable);
+    const response = await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(201);
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: created.body.id,
+        status: "CONFIRMED",
+      }),
+    );
+  });
+
+  it("allows an organization member to reject a pending approval-required reservation", async () => {
+    const bookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const created = await createReservation(customer, bookable);
+    const response = await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/reject`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(200);
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: created.body.id,
+        status: "REJECTED",
+      }),
+    );
+  });
+
+  it("rejects approval and rejection by a non-member", async () => {
+    const bookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const created = await createReservation(customer, bookable);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${secondCustomer.accessToken}`)
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/reject`,
+      )
+      .set("Authorization", `Bearer ${secondCustomer.accessToken}`)
+      .expect(404);
+  });
+
+  it("rejects actions on reservations from another organization", async () => {
+    const otherOrganizationId = await createOrganization(owner);
+    organizationIds.push(otherOrganizationId);
+    const otherBookable = await createBookable({
+      organizationId: otherOrganizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const created = await createReservation(customer, otherBookable);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/reject`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(404);
+  });
+
+  it("approves approval-required paid reservations regardless of payment status", async () => {
+    const bookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+      price: 1000,
+    });
+    const created = await createReservation(customer, bookable);
+    await prisma.payment.create({
+      data: {
+        reservationId: created.body.id,
+        provider: "fake",
+        providerReference: `approval-paid-${Date.now()}`,
+        amount: 1000,
+        currency: "NGN",
+        status: "PENDING",
+      },
+    });
+    const response = await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(201);
+    expect(response.body).toEqual(
+      expect.objectContaining({ id: created.body.id, status: "CONFIRMED" }),
+    );
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { reservationId: created.body.id },
+    });
+    expect(payment.status).toBe("PENDING");
+  });
+
+  it("auto-approved reservations cannot be approved or rejected by the operator", async () => {
+    const bookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.AUTOMATIC,
+    });
+    const created = await createReservation(customer, bookable);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(409);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/reject`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(409);
+  });
+
+  it("rejected or confirmed reservations cannot be approved or rejected again", async () => {
+    const bookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const created = await createReservation(customer, bookable);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/reject`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(409);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/reject`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(409);
+
+    const secondBookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    const secondCreated = await createReservation(customer, secondBookable);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${secondCreated.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${secondCreated.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(409);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${secondCreated.body.id}/reject`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(409);
+  });
+
+  it("rechecks capacity during approval and blocks approval when it would exceed capacity", async () => {
+    const bookable = await createBookable({
+      organizationId,
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+      capacity: 1,
+    });
+    const pending = await createReservation(customer, bookable);
+
+    await prisma.reservation.create({
+      data: {
+        bookableId: bookable.id,
+        customerId: secondCustomer.id,
+        startAt: bookable.startAt,
+        endAt: bookable.endAt,
+        quantity: 1,
+        amount: 0,
+        currency: bookable.currency,
+        status: ReservationStatus.CONFIRMED,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${pending.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(409);
+    const refreshed = await request(app.getHttpServer())
+      .get(`/api/v1/reservations/${pending.body.id}`)
+      .set("Authorization", `Bearer ${customer.accessToken}`)
+      .expect(200);
+    expect(refreshed.body.status).toBe("PENDING");
+  });
+
   it("allows exactly one concurrent reservation at capacity one", async () => {
     const bookable = await createBookable({ capacity: 1 });
     const results = await Promise.all([
@@ -588,6 +809,7 @@ describe("Reservations (integration)", () => {
       status?: BookableStatus;
       confirmationPolicy?: ConfirmationPolicy;
       price?: number;
+      currency?: string;
       durationMode?: DurationMode;
       minimumDuration?: number;
       maximumDuration?: number;
@@ -597,7 +819,9 @@ describe("Reservations (integration)", () => {
       availability?: "normal" | "split" | "none";
       exception?: "BLOCK" | "OVERRIDE";
     } = {},
-  ): Promise<BookableSetup & { startAtPlusThirtyMinutes: Date }> {
+  ): Promise<
+    BookableSetup & { currency: string; startAtPlusThirtyMinutes: Date }
+  > {
     const startAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
     startAt.setSeconds(0, 0);
     const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
@@ -674,6 +898,7 @@ describe("Reservations (integration)", () => {
       organizationId,
       startAt,
       endAt,
+      currency: response.currency,
       startAtPlusThirtyMinutes: new Date(startAt.getTime() + 30 * 60 * 1000),
     };
   }

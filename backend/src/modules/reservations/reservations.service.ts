@@ -264,13 +264,197 @@ export class ReservationsService {
       reservation.bookable.confirmationPolicy ===
       ConfirmationPolicy.REQUIRES_APPROVAL
     ) {
-      return reservation as typeof reservation & {
-        status: ReservationStatus;
-      };
+      return reservation;
     }
     return transaction.reservation.update({
       where: { id: reservationId },
       data: { status: ReservationStatus.CONFIRMED },
+      select: reservationSelect,
+    });
+  }
+
+  async approveForOrganization(
+    userId: string,
+    organizationId: string,
+    reservationId: string,
+  ) {
+    await this.organizationAuthorization.requireMembership(
+      userId,
+      organizationId,
+    );
+
+    return this.prisma.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: {
+          id: reservationId,
+          bookable: { organizationId },
+        },
+        select: {
+          id: true,
+          status: true,
+          startAt: true,
+          endAt: true,
+          quantity: true,
+          expiresAt: true,
+          bookable: {
+            select: {
+              id: true,
+              status: true,
+              capacity: true,
+              confirmationPolicy: true,
+            },
+          },
+        },
+      });
+
+      if (!reservation) throw new NotFoundException("Reservation not found");
+      if (reservation.status !== ReservationStatus.PENDING) {
+        throw new ConflictException("Reservation cannot be approved");
+      }
+      if (reservation.expiresAt && reservation.expiresAt <= new Date()) {
+        throw new ConflictException("Reservation has expired");
+      }
+      if (reservation.bookable.status !== BookableStatus.PUBLISHED) {
+        throw new ConflictException("Bookable is not published");
+      }
+      if (
+        reservation.bookable.confirmationPolicy !==
+        ConfirmationPolicy.REQUIRES_APPROVAL
+      ) {
+        throw new ConflictException("Reservation does not require approval");
+      }
+
+      await transaction.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "Bookable"
+        WHERE "id" = CAST(${reservation.bookable.id} AS uuid)
+        FOR UPDATE
+      `;
+
+      const lockedReservation = await transaction.reservation.findFirst({
+        where: {
+          id: reservationId,
+          bookable: { organizationId },
+        },
+        select: {
+          id: true,
+          status: true,
+          startAt: true,
+          endAt: true,
+          quantity: true,
+          expiresAt: true,
+          bookable: {
+            select: {
+              id: true,
+              status: true,
+              capacity: true,
+              confirmationPolicy: true,
+            },
+          },
+        },
+      });
+
+      if (!lockedReservation) {
+        throw new NotFoundException("Reservation not found");
+      }
+      if (lockedReservation.status !== ReservationStatus.PENDING) {
+        throw new ConflictException("Reservation cannot be approved");
+      }
+      if (
+        lockedReservation.expiresAt &&
+        lockedReservation.expiresAt <= new Date()
+      ) {
+        throw new ConflictException("Reservation has expired");
+      }
+      if (lockedReservation.bookable.status !== BookableStatus.PUBLISHED) {
+        throw new ConflictException("Bookable is not published");
+      }
+      if (
+        lockedReservation.bookable.confirmationPolicy !==
+        ConfirmationPolicy.REQUIRES_APPROVAL
+      ) {
+        throw new ConflictException("Reservation does not require approval");
+      }
+
+      const overlapping = await transaction.reservation.findMany({
+        where: {
+          bookableId: lockedReservation.bookable.id,
+          id: { not: reservationId },
+          status: {
+            in: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED],
+          },
+          startAt: { lt: lockedReservation.endAt },
+          endAt: { gt: lockedReservation.startAt },
+        },
+        select: { quantity: true },
+      });
+      const consumedQuantity = overlapping.reduce(
+        (total, item) => total + item.quantity,
+        0,
+      );
+      if (
+        consumedQuantity + lockedReservation.quantity >
+        lockedReservation.bookable.capacity
+      ) {
+        throw new ConflictException("Bookable capacity exceeded");
+      }
+
+      return transaction.reservation.update({
+        where: { id: reservationId },
+        data: { status: ReservationStatus.CONFIRMED },
+        select: reservationSelect,
+      });
+    });
+  }
+
+  async rejectForOrganization(
+    userId: string,
+    organizationId: string,
+    reservationId: string,
+  ) {
+    await this.organizationAuthorization.requireMembership(
+      userId,
+      organizationId,
+    );
+
+    const reservation = await this.prisma.reservation.findFirst({
+      where: {
+        id: reservationId,
+        bookable: { organizationId },
+      },
+      select: {
+        id: true,
+        status: true,
+        expiresAt: true,
+        bookable: {
+          select: {
+            status: true,
+            confirmationPolicy: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) throw new NotFoundException("Reservation not found");
+    if (reservation.status !== ReservationStatus.PENDING) {
+      throw new ConflictException("Reservation cannot be rejected");
+    }
+    if (reservation.expiresAt && reservation.expiresAt <= new Date()) {
+      throw new ConflictException("Reservation has expired");
+    }
+    if (reservation.bookable.status !== BookableStatus.PUBLISHED) {
+      throw new ConflictException("Bookable is not published");
+    }
+    if (
+      reservation.bookable.confirmationPolicy !==
+      ConfirmationPolicy.REQUIRES_APPROVAL
+    ) {
+      throw new ConflictException("Reservation does not require approval");
+    }
+
+    return this.prisma.reservation.update({
+      where: { id: reservationId },
+      data: { status: ReservationStatus.REJECTED },
       select: reservationSelect,
     });
   }

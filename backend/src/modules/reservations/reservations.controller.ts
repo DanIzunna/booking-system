@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Query,
@@ -67,6 +69,39 @@ export class ReservationsController {
     @Body() input: CreateReservationDto,
   ) {
     return this.reservations.create(request.user.id, bookableId, input);
+  }
+
+  @Post("organizations/:organizationId/reservations/:reservationId/approve")
+  @ApiOperation({ summary: "Approve a pending approval-required reservation" })
+  @ApiParam({ name: "organizationId", format: "uuid" })
+  @ApiParam({ name: "reservationId", format: "uuid" })
+  approveOrganizationReservation(
+    @Req() request: AuthenticatedRequest,
+    @Param("organizationId") organizationId: string,
+    @Param("reservationId") reservationId: string,
+  ) {
+    return this.reservations.approveForOrganization(
+      request.user.id,
+      organizationId,
+      reservationId,
+    );
+  }
+
+  @Post("organizations/:organizationId/reservations/:reservationId/reject")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Reject a pending approval-required reservation" })
+  @ApiParam({ name: "organizationId", format: "uuid" })
+  @ApiParam({ name: "reservationId", format: "uuid" })
+  rejectOrganizationReservation(
+    @Req() request: AuthenticatedRequest,
+    @Param("organizationId") organizationId: string,
+    @Param("reservationId") reservationId: string,
+  ) {
+    return this.reservations.rejectForOrganization(
+      request.user.id,
+      organizationId,
+      reservationId,
+    );
   }
 
   @Post("reservations/:reservationId/confirm-free")
