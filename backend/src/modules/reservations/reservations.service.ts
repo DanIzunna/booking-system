@@ -214,11 +214,12 @@ export class ReservationsService {
         throw new ConflictException("Bookable capacity exceeded");
       }
 
+      const reservationAmount = input.quantity * bookable.price;
       const status =
-        lockedBookable.confirmationPolicy ===
-        ConfirmationPolicy.REQUIRES_APPROVAL
-          ? ReservationStatus.PENDING
-          : ReservationStatus.CONFIRMED;
+        reservationAmount === 0 &&
+        lockedBookable.confirmationPolicy === ConfirmationPolicy.AUTOMATIC
+          ? ReservationStatus.CONFIRMED
+          : ReservationStatus.PENDING;
 
       return transaction.reservation.create({
         data: {
@@ -227,7 +228,7 @@ export class ReservationsService {
           startAt: requested.startAt,
           endAt,
           quantity: input.quantity,
-          amount: input.quantity * bookable.price,
+          amount: reservationAmount,
           currency: bookable.currency,
           status,
         },

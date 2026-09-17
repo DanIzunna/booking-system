@@ -133,7 +133,7 @@ describe("Reservations (integration)", () => {
     );
   });
 
-  it("creates automatic paid reservations as confirmed immediately", async () => {
+  it("creates automatic paid reservations as pending until payment succeeds", async () => {
     const bookable = await createBookable({
       confirmationPolicy: ConfirmationPolicy.AUTOMATIC,
       price: 1000,
@@ -143,7 +143,7 @@ describe("Reservations (integration)", () => {
       expect.objectContaining({
         bookableId: bookable.id,
         amount: 1000,
-        status: "CONFIRMED",
+        status: "PENDING",
       }),
     );
   });
