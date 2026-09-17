@@ -243,7 +243,14 @@ export class ReservationsService {
   ) {
     const reservation = await transaction.reservation.findUnique({
       where: { id: reservationId },
-      select: { id: true, status: true, expiresAt: true },
+      select: {
+        id: true,
+        status: true,
+        expiresAt: true,
+        bookable: {
+          select: { confirmationPolicy: true },
+        },
+      },
     });
     if (!reservation) throw new NotFoundException("Reservation not found");
     if (reservation.status === ReservationStatus.CONFIRMED) return reservation;
@@ -252,6 +259,14 @@ export class ReservationsService {
     }
     if (reservation.expiresAt && reservation.expiresAt <= new Date()) {
       throw new ConflictException("Reservation has expired");
+    }
+    if (
+      reservation.bookable.confirmationPolicy ===
+      ConfirmationPolicy.REQUIRES_APPROVAL
+    ) {
+      return reservation as typeof reservation & {
+        status: ReservationStatus;
+      };
     }
     return transaction.reservation.update({
       where: { id: reservationId },

@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   BookableStatus,
+  ConfirmationPolicy,
   DurationMode,
   PaymentStatus,
   ReservationStatus,
@@ -185,7 +186,7 @@ describe("Payments (integration)", () => {
     await initialize(customer, succeeded.reservationId, 409);
   });
 
-  it("processes verified successful webhooks atomically and idempotently", async () => {
+  it("processes verified successful webhooks atomically and idempotently for automatic reservations", async () => {
     const fixture = await createFixture(2000, "NGN", customer);
     const initialized = await initialize(customer, fixture.reservationId);
     const first = await webhook(
@@ -220,6 +221,43 @@ describe("Payments (integration)", () => {
         })
       ).status,
     ).toBe(ReservationStatus.CONFIRMED);
+  });
+
+  it("keeps approval-required paid reservations pending after payment succeeds", async () => {
+    const fixture = await createFixture(
+      2000,
+      "NGN",
+      customer,
+      1,
+      undefined,
+      ConfirmationPolicy.REQUIRES_APPROVAL,
+    );
+    const initialized = await initialize(customer, fixture.reservationId);
+    const response = await webhook(
+      initialized.body.providerReference,
+      2000,
+      "NGN",
+    );
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        status: "SUCCEEDED",
+        idempotent: false,
+      }),
+    );
+    expect(
+      (
+        await prisma.payment.findUniqueOrThrow({
+          where: { reservationId: fixture.reservationId },
+        })
+      ).status,
+    ).toBe(PaymentStatus.SUCCEEDED);
+    expect(
+      (
+        await prisma.reservation.findUniqueOrThrow({
+          where: { id: fixture.reservationId },
+        })
+      ).status,
+    ).toBe(ReservationStatus.PENDING);
   });
 
   it("makes duplicate FAILED webhooks idempotent", async () => {
@@ -357,6 +395,7 @@ describe("Payments (integration)", () => {
     user: Session,
     quantity = 1,
     expiresAt?: Date,
+    confirmationPolicy: ConfirmationPolicy = ConfirmationPolicy.AUTOMATIC,
   ): Promise<Fixture> {
     const startAt = new Date(Date.now() + 3 * 3600 * 1000);
     startAt.setSeconds(0, 0);
@@ -367,6 +406,7 @@ describe("Payments (integration)", () => {
         name: `Payment Bookable ${Date.now()}`,
         slug: `payment-bookable-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         status: BookableStatus.PUBLISHED,
+        confirmationPolicy,
         capacity: 10,
         price,
         currency,
