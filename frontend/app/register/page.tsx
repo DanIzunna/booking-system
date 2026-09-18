@@ -2,26 +2,33 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { Suspense } from "react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ApiError } from "../../lib/api/client";
 import { useSession } from "../../lib/auth/session-provider";
+import { isInternalReturnTo } from "../../lib/public-booking/booking-selection";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status, register } = useSession();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const returnTo = isInternalReturnTo(searchParams.get("returnTo"))
+    ? searchParams.get("returnTo")
+    : null;
 
   useEffect(() => {
-    if (status === "authenticated") router.replace("/dashboard");
-  }, [router, status]);
+    if (status === "authenticated") router.replace(returnTo ?? "/dashboard");
+  }, [returnTo, router, status]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,7 +36,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register({ name, email, password });
-      router.push("/dashboard");
+      router.push(returnTo ?? "/dashboard");
     } catch (caught) {
       setError(
         caught instanceof ApiError
@@ -78,7 +85,8 @@ export default function RegisterPage() {
               Create your workspace
             </h1>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Set up resources your customers can book and manage them from one place.
+              Set up resources your customers can book and manage them from one
+              place.
             </p>
           </div>
           <form className="mt-7 grid gap-5" onSubmit={handleSubmit}>
@@ -132,7 +140,7 @@ export default function RegisterPage() {
             Already have an account?{" "}
             <Link
               className="font-medium text-slate-950 underline underline-offset-4 hover:text-slate-600"
-              href="/login"
+              href={returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login"}
             >
               Sign in
             </Link>
@@ -143,5 +151,19 @@ export default function RegisterPage() {
         © 2026 Bookable
       </footer>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center bg-slate-50 text-sm text-slate-500">
+          Checking your session...
+        </main>
+      }
+    >
+      <RegisterPageContent />
+    </Suspense>
   );
 }
