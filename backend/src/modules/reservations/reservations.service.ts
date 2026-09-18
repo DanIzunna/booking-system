@@ -9,6 +9,7 @@ import {
   BookableStatus,
   ConfirmationPolicy,
   DurationMode,
+  PaymentStatus,
   Prisma,
   ReservationStatus,
 } from "@prisma/client";
@@ -35,14 +36,23 @@ const reservationSelect = {
 const customerReservationSelect = {
   id: true,
   bookableId: true,
+  customerId: true,
   startAt: true,
   endAt: true,
   quantity: true,
   amount: true,
   currency: true,
   status: true,
+  approvedAt: true,
   expiresAt: true,
   updatedAt: true,
+  payment: {
+    select: { id: true, status: true, amount: true, currency: true },
+  },
+} satisfies Prisma.ReservationSelect;
+
+const customerReservationConfirmationSelect = {
+  ...customerReservationSelect,
   bookable: {
     select: {
       name: true,
@@ -68,6 +78,7 @@ const operatorReservationSelect = {
       id: true,
       name: true,
       slug: true,
+      confirmationPolicy: true,
       organization: { select: { id: true, name: true, timezone: true } },
     },
   },
@@ -232,7 +243,7 @@ export class ReservationsService {
           currency: bookable.currency,
           status,
         },
-        select: reservationSelect,
+        select: customerReservationSelect,
       });
     });
   }
@@ -241,11 +252,14 @@ export class ReservationsService {
     transaction: Prisma.TransactionClient,
     reservationId: string,
   ) {
+    await this.lockForPaymentTransition(transaction, reservationId);
+
     const reservation = await transaction.reservation.findUnique({
       where: { id: reservationId },
       select: {
         id: true,
         status: true,
+        approvedAt: true,
         expiresAt: true,
         bookable: {
           select: { confirmationPolicy: true },
@@ -262,7 +276,8 @@ export class ReservationsService {
     }
     if (
       reservation.bookable.confirmationPolicy ===
-      ConfirmationPolicy.REQUIRES_APPROVAL
+        ConfirmationPolicy.REQUIRES_APPROVAL &&
+      !reservation.approvedAt
     ) {
       return reservation;
     }
@@ -339,6 +354,8 @@ export class ReservationsService {
         select: {
           id: true,
           status: true,
+          amount: true,
+          approvedAt: true,
           startAt: true,
           endAt: true,
           quantity: true,
@@ -351,6 +368,7 @@ export class ReservationsService {
               confirmationPolicy: true,
             },
           },
+          payment: { select: { status: true } },
         },
       });
 
@@ -401,7 +419,14 @@ export class ReservationsService {
 
       return transaction.reservation.update({
         where: { id: reservationId },
-        data: { status: ReservationStatus.CONFIRMED },
+        data: {
+          status:
+            lockedReservation.amount === 0 ||
+            lockedReservation.payment?.status === PaymentStatus.SUCCEEDED
+              ? ReservationStatus.CONFIRMED
+              : ReservationStatus.PENDING,
+          approvedAt: new Date(),
+        },
         select: reservationSelect,
       });
     });
@@ -417,45 +442,69 @@ export class ReservationsService {
       organizationId,
     );
 
-    const reservation = await this.prisma.reservation.findFirst({
-      where: {
-        id: reservationId,
-        bookable: { organizationId },
-      },
-      select: {
-        id: true,
-        status: true,
-        expiresAt: true,
-        bookable: {
-          select: {
-            status: true,
-            confirmationPolicy: true,
+    return this.prisma.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: {
+          id: reservationId,
+          bookable: { organizationId },
+        },
+        select: { bookable: { select: { id: true } } },
+      });
+
+      if (!reservation) throw new NotFoundException("Reservation not found");
+
+      await transaction.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "Bookable"
+        WHERE "id" = CAST(${reservation.bookable.id} AS uuid)
+        FOR UPDATE
+      `;
+
+      const lockedReservation = await transaction.reservation.findFirst({
+        where: {
+          id: reservationId,
+          bookable: { organizationId },
+        },
+        select: {
+          id: true,
+          status: true,
+          expiresAt: true,
+          bookable: {
+            select: {
+              status: true,
+              confirmationPolicy: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!reservation) throw new NotFoundException("Reservation not found");
-    if (reservation.status !== ReservationStatus.PENDING) {
-      throw new ConflictException("Reservation cannot be rejected");
-    }
-    if (reservation.expiresAt && reservation.expiresAt <= new Date()) {
-      throw new ConflictException("Reservation has expired");
-    }
-    if (reservation.bookable.status !== BookableStatus.PUBLISHED) {
-      throw new ConflictException("Bookable is not published");
-    }
-    if (
-      reservation.bookable.confirmationPolicy !==
-      ConfirmationPolicy.REQUIRES_APPROVAL
-    ) {
-      throw new ConflictException("Reservation does not require approval");
-    }
+      if (!lockedReservation) {
+        throw new NotFoundException("Reservation not found");
+      }
+      if (lockedReservation.status !== ReservationStatus.PENDING) {
+        throw new ConflictException("Reservation cannot be rejected");
+      }
+      if (
+        lockedReservation.expiresAt &&
+        lockedReservation.expiresAt <= new Date()
+      ) {
+        throw new ConflictException("Reservation has expired");
+      }
+      if (lockedReservation.bookable.status !== BookableStatus.PUBLISHED) {
+        throw new ConflictException("Bookable is not published");
+      }
+      if (
+        lockedReservation.bookable.confirmationPolicy !==
+        ConfirmationPolicy.REQUIRES_APPROVAL
+      ) {
+        throw new ConflictException("Reservation does not require approval");
+      }
 
-    return this.prisma.reservation.update({
-      where: { id: reservationId },
-      data: { status: ReservationStatus.REJECTED },
-      select: reservationSelect,
+      return transaction.reservation.update({
+        where: { id: reservationId },
+        data: { status: ReservationStatus.REJECTED },
+        select: reservationSelect,
+      });
     });
   }
 
@@ -463,16 +512,34 @@ export class ReservationsService {
     return this.prisma.$transaction(async (transaction) => {
       const reservation = await transaction.reservation.findFirst({
         where: { id: reservationId, customerId },
-        select: customerReservationSelect,
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          expiresAt: true,
+          bookable: { select: { confirmationPolicy: true } },
+        },
       });
       if (!reservation) throw new NotFoundException("Reservation not found");
       if (reservation.amount !== 0) {
         throw new ConflictException("Reservation requires payment");
       }
-      if (reservation.status === ReservationStatus.CONFIRMED)
-        return reservation;
+      if (reservation.status === ReservationStatus.CONFIRMED) {
+        return transaction.reservation.findUniqueOrThrow({
+          where: { id: reservationId },
+          select: customerReservationConfirmationSelect,
+        });
+      }
       if (reservation.status !== ReservationStatus.PENDING) {
         throw new ConflictException("Reservation cannot be confirmed");
+      }
+      if (
+        reservation.bookable.confirmationPolicy ===
+        ConfirmationPolicy.REQUIRES_APPROVAL
+      ) {
+        throw new ConflictException(
+          "Reservation requires organization approval",
+        );
       }
       if (reservation.expiresAt && reservation.expiresAt <= new Date()) {
         throw new ConflictException("Reservation has expired");
@@ -480,15 +547,33 @@ export class ReservationsService {
       return transaction.reservation.update({
         where: { id: reservationId },
         data: { status: ReservationStatus.CONFIRMED },
-        select: customerReservationSelect,
+        select: customerReservationConfirmationSelect,
       });
     });
+  }
+
+  async lockForPaymentTransition(
+    transaction: Prisma.TransactionClient,
+    reservationId: string,
+  ) {
+    const reservation = await transaction.reservation.findUnique({
+      where: { id: reservationId },
+      select: { bookableId: true },
+    });
+    if (!reservation) throw new NotFoundException("Reservation not found");
+
+    await transaction.$queryRaw<{ id: string }[]>`
+      SELECT "id"
+      FROM "Bookable"
+      WHERE "id" = CAST(${reservation.bookableId} AS uuid)
+      FOR UPDATE
+    `;
   }
 
   async get(customerId: string, reservationId: string) {
     const reservation = await this.prisma.reservation.findFirst({
       where: { id: reservationId, customerId },
-      select: reservationSelect,
+      select: customerReservationSelect,
     });
     if (!reservation) throw new NotFoundException("Reservation not found");
     return reservation;
@@ -498,7 +583,7 @@ export class ReservationsService {
     return this.prisma.reservation.findMany({
       where: { customerId },
       orderBy: { startAt: "asc" },
-      select: reservationSelect,
+      select: customerReservationSelect,
     });
   }
 

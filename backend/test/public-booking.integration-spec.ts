@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   BookableStatus,
+  ConfirmationPolicy,
   DurationMode,
   ReservationStatus,
 } from "@prisma/client";
@@ -96,6 +97,7 @@ describe("Public booking (integration)", () => {
         slug: fixture.slug,
         name: expect.any(String),
         status: "PUBLISHED",
+        confirmationPolicy: "AUTOMATIC",
         price: 2500,
         currency: "NGN",
         organization: expect.objectContaining({
@@ -109,6 +111,7 @@ describe("Public booking (integration)", () => {
     expect(Object.keys(response.body).sort()).toEqual(
       [
         "capacity",
+        "confirmationPolicy",
         "currency",
         "description",
         "id",
@@ -123,6 +126,18 @@ describe("Public booking (integration)", () => {
     expect(response.body.organization.timezone).toBe("Africa/Lagos");
     expect(response.body.organization.memberships).toBeUndefined();
     expect(response.body.passwordHash).toBeUndefined();
+
+    const approvalRequired = await createBookable({
+      confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
+    });
+    await request(app.getHttpServer())
+      .get(`/api/v1/public/bookables/${approvalRequired.slug}`)
+      .expect(200)
+      .then((approvalResponse) => {
+        expect(approvalResponse.body.confirmationPolicy).toBe(
+          "REQUIRES_APPROVAL",
+        );
+      });
   });
 
   it("returns fixed-duration slots for a workspace-local date and respects capacity", async () => {
@@ -352,6 +367,7 @@ describe("Public booking (integration)", () => {
   async function createBookable(
     options: {
       status?: BookableStatus;
+      confirmationPolicy?: ConfirmationPolicy;
       capacity?: number;
       durationMode?: DurationMode;
       minimumDuration?: number;
@@ -374,6 +390,8 @@ describe("Public booking (integration)", () => {
         description: "Public description",
         slug: `public-bookable-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         status: options.status ?? BookableStatus.PUBLISHED,
+        confirmationPolicy:
+          options.confirmationPolicy ?? ConfirmationPolicy.AUTOMATIC,
         capacity: options.capacity ?? 2,
         reservationRule: {
           create: {

@@ -1,6 +1,7 @@
 import type { BookableStatus } from "./bookables";
 
 export type PublicDurationMode = "FLEXIBLE" | "FIXED";
+export type ConfirmationPolicy = "AUTOMATIC" | "REQUIRES_APPROVAL";
 
 export interface PublicReservationRule {
   durationMode: PublicDurationMode;
@@ -19,6 +20,7 @@ export interface PublicBookable {
   description: string | null;
   capacity: number;
   status?: BookableStatus;
+  confirmationPolicy: ConfirmationPolicy;
   organization: {
     id: string;
     name: string;
@@ -27,6 +29,18 @@ export interface PublicBookable {
   price: number;
   currency: string;
   reservationRule: PublicReservationRule | null;
+}
+
+export interface PublicOrganization {
+  name: string;
+  slug: string;
+  timezone: string;
+  bookables: Array<
+    Pick<
+      PublicBookable,
+      "slug" | "name" | "description" | "price" | "currency" | "capacity"
+    >
+  >;
 }
 
 export interface PublicAvailabilityCheckInput {

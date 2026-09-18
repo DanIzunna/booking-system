@@ -22,6 +22,7 @@ const publicBookableSelect = {
   name: true,
   description: true,
   status: true,
+  confirmationPolicy: true,
   price: true,
   currency: true,
   capacity: true,
@@ -39,6 +40,24 @@ const publicBookableSelect = {
   },
 } satisfies Prisma.BookableSelect;
 
+const publicOrganizationSelect = {
+  name: true,
+  slug: true,
+  timezone: true,
+  bookables: {
+    where: { status: BookableStatus.PUBLISHED },
+    orderBy: { createdAt: "asc" },
+    select: {
+      slug: true,
+      name: true,
+      description: true,
+      price: true,
+      currency: true,
+      capacity: true,
+    },
+  },
+} satisfies Prisma.OrganizationSelect;
+
 @Injectable()
 export class PublicBookingService {
   constructor(
@@ -46,21 +65,41 @@ export class PublicBookingService {
     private readonly availability: AvailabilityEngineService,
   ) {}
 
-  async getBookable(slug: string) {
+  async getOrganization(organizationSlug: string) {
+    const organization = await this.prisma.organization.findUnique({
+      where: { slug: organizationSlug },
+      select: publicOrganizationSelect,
+    });
+    if (!organization) throw new NotFoundException("Organization not found");
+    return organization;
+  }
+
+  async getBookable(organizationOrSlug: string, bookableSlug?: string) {
     const bookable = await this.findPublishedBookable(
-      slug,
+      organizationOrSlug,
+      bookableSlug,
       publicBookableSelect,
     );
     return bookable;
   }
 
-  async checkAvailability(slug: string, input: PublicAvailabilityCheckDto) {
-    const bookable = await this.findPublishedBookable(slug, {
-      id: true,
-      capacity: true,
-      organization: { select: { timezone: true } },
-      reservationRule: true,
-    });
+  async checkAvailability(
+    organizationOrSlug: string,
+    bookableOrInput: string | PublicAvailabilityCheckDto,
+    maybeInput?: PublicAvailabilityCheckDto,
+  ) {
+    const input =
+      typeof bookableOrInput === "string" ? maybeInput! : bookableOrInput;
+    const bookable = await this.findPublishedBookable(
+      organizationOrSlug,
+      typeof bookableOrInput === "string" ? bookableOrInput : undefined,
+      {
+        id: true,
+        capacity: true,
+        organization: { select: { timezone: true } },
+        reservationRule: true,
+      },
+    );
     const startAt = parseTimestamp(input.startAt, "startAt");
     const endAt = parseTimestamp(input.endAt, "endAt");
 
@@ -117,13 +156,23 @@ export class PublicBookingService {
     return { available: true };
   }
 
-  async getAvailability(slug: string, input: PublicAvailabilityDto) {
-    const bookable = await this.findPublishedBookable(slug, {
-      id: true,
-      capacity: true,
-      organization: { select: { timezone: true } },
-      reservationRule: true,
-    });
+  async getAvailability(
+    organizationOrSlug: string,
+    bookableOrInput: string | PublicAvailabilityDto,
+    maybeInput?: PublicAvailabilityDto,
+  ) {
+    const input =
+      typeof bookableOrInput === "string" ? maybeInput! : bookableOrInput;
+    const bookable = await this.findPublishedBookable(
+      organizationOrSlug,
+      typeof bookableOrInput === "string" ? bookableOrInput : undefined,
+      {
+        id: true,
+        capacity: true,
+        organization: { select: { timezone: true } },
+        reservationRule: true,
+      },
+    );
     const [windows, exceptions] = await Promise.all([
       this.prisma.availabilityWindow.findMany({
         where: { bookableId: bookable.id },
@@ -203,11 +252,16 @@ export class PublicBookingService {
   }
 
   private async findPublishedBookable<T extends Prisma.BookableSelect>(
-    slug: string,
+    organizationOrSlug: string,
+    bookableSlug: string | undefined,
     select: T,
   ): Promise<Prisma.BookableGetPayload<{ select: T }>> {
     const bookable = await this.prisma.bookable.findFirst({
-      where: { slug, status: BookableStatus.PUBLISHED },
+      where: {
+        status: BookableStatus.PUBLISHED,
+        slug: bookableSlug ?? organizationOrSlug,
+        ...(bookableSlug ? { organization: { slug: organizationOrSlug } } : {}),
+      },
       select,
     });
     if (!bookable) throw new NotFoundException("Bookable not found");

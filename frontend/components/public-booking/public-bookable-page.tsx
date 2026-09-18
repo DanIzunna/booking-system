@@ -37,7 +37,10 @@ import type {
   PublicAvailabilitySlot,
   PublicBookable,
 } from "../../types/public-booking";
-import type { ReservationConfirmation } from "../../types/reservations";
+import type {
+  ReservationConfirmation,
+  ReservationResult,
+} from "../../types/reservations";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -82,6 +85,8 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
   const [reservationError, setReservationError] = useState("");
   const [confirmation, setConfirmation] =
     useState<ReservationConfirmation | null>(null);
+  const [requestSubmitted, setRequestSubmitted] =
+    useState<ReservationResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -319,6 +324,10 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
         return;
       }
       clearBookingSelection();
+      if (bookable.confirmationPolicy === "REQUIRES_APPROVAL") {
+        setRequestSubmitted(created);
+        return;
+      }
       setConfirmation(await confirmFreeReservation(created.id));
     } catch (caught) {
       if (caught instanceof ApiError && caught.statusCode === 401) {
@@ -378,6 +387,12 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
     return (
       <PublicShell context="Public booking">
         <ConfirmationState confirmation={confirmation} />
+      </PublicShell>
+    );
+  if (requestSubmitted)
+    return (
+      <PublicShell context="Public booking">
+        <RequestSubmittedState reservation={requestSubmitted} />
       </PublicShell>
     );
 
@@ -935,6 +950,28 @@ function ConfirmationState({
       >
         <ArrowLeft className="size-4" aria-hidden="true" /> Return to Bookable
       </Link>
+    </section>
+  );
+}
+
+function RequestSubmittedState({
+  reservation,
+}: {
+  reservation: ReservationResult;
+}) {
+  return (
+    <section className="rounded-[8px] border border-slate-200 bg-white p-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+        Request submitted
+      </p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+        Waiting for approval
+      </h1>
+      <p className="mt-3 text-sm leading-6 text-slate-600">
+        Your reservation request was submitted and will be confirmed after the
+        organization approves it.
+      </p>
+      <SummaryRow label="Reference" value={reservation.id} />
     </section>
   );
 }

@@ -117,6 +117,8 @@ describe("Reservations (integration)", () => {
         customerId: customer.id,
         quantity: 1,
         status: "CONFIRMED",
+        payment: null,
+        approvedAt: null,
       }),
     );
   });
@@ -146,7 +148,10 @@ describe("Reservations (integration)", () => {
       expect.objectContaining({
         bookableId: bookable.id,
         amount: 1000,
+        currency: "NGN",
         status: "PENDING",
+        payment: null,
+        approvedAt: null,
       }),
     );
   });
@@ -164,6 +169,19 @@ describe("Reservations (integration)", () => {
         status: "PENDING",
       }),
     );
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/reservations/${created.body.id}/confirm-free`)
+      .set("Authorization", `Bearer ${customer.accessToken}`)
+      .expect(409);
+
+    const approved = await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${created.body.id}/approve`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(201);
+    expect(approved.body.status).toBe("CONFIRMED");
   });
 
   it("creates approval-required paid reservations as pending", async () => {
@@ -410,10 +428,34 @@ describe("Reservations (integration)", () => {
   it("restricts reservation reads to the authenticated customer", async () => {
     const bookable = await createBookable({ capacity: 2 });
     const created = await createReservation(customer, bookable);
+    await prisma.payment.create({
+      data: {
+        reservationId: created.body.id,
+        provider: "fake",
+        providerReference: `contract-${Date.now()}`,
+        amount: 0,
+        currency: "NGN",
+        status: "SUCCEEDED",
+      },
+    });
+    await prisma.reservation.update({
+      where: { id: created.body.id },
+      data: { approvedAt: new Date() },
+    });
     await request(app.getHttpServer())
       .get(`/api/v1/reservations/${created.body.id}`)
       .set("Authorization", `Bearer ${customer.accessToken}`)
-      .expect(200);
+      .expect(200)
+      .then((response) => {
+        expect(response.body.payment).toEqual({
+          id: expect.any(String),
+          status: "SUCCEEDED",
+          amount: 0,
+          currency: "NGN",
+        });
+        expect(response.body.approvedAt).toEqual(expect.any(String));
+        expect(response.body.providerReference).toBeUndefined();
+      });
     await request(app.getHttpServer())
       .get(`/api/v1/reservations/${created.body.id}`)
       .set("Authorization", `Bearer ${secondCustomer.accessToken}`)
@@ -428,6 +470,8 @@ describe("Reservations (integration)", () => {
         expect.objectContaining({
           id: created.body.id,
           customerId: customer.id,
+          payment: expect.objectContaining({ status: "SUCCEEDED" }),
+          approvedAt: expect.any(String),
         }),
       ]),
     );
@@ -612,7 +656,7 @@ describe("Reservations (integration)", () => {
       .expect(404);
   });
 
-  it("approves approval-required paid reservations regardless of payment status", async () => {
+  it("keeps approval-required paid reservations pending until payment succeeds", async () => {
     const bookable = await createBookable({
       organizationId,
       confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
@@ -636,7 +680,7 @@ describe("Reservations (integration)", () => {
       .set("Authorization", `Bearer ${member.accessToken}`)
       .expect(201);
     expect(response.body).toEqual(
-      expect.objectContaining({ id: created.body.id, status: "CONFIRMED" }),
+      expect.objectContaining({ id: created.body.id, status: "PENDING" }),
     );
     const payment = await prisma.payment.findUniqueOrThrow({
       where: { reservationId: created.body.id },
