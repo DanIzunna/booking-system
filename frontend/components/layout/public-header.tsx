@@ -36,6 +36,18 @@ export function PublicHeader() {
           {authenticated && (
             <>
               <Link
+                className={navClass(pathname.startsWith("/reservations"))}
+                href="/reservations"
+              >
+                Reservations
+              </Link>
+              <Link
+                className={navClass(pathname.startsWith("/account"))}
+                href="/account"
+              >
+                Account
+              </Link>
+              <Link
                 className={navClass(pathname === "/dashboard")}
                 href="/dashboard"
               >
@@ -76,6 +88,20 @@ export function PublicHeader() {
         <div className="border-t border-zinc-200 px-4 py-3 md:hidden">
           {authenticated ? (
             <>
+              <Link
+                className="block py-2 text-sm font-medium"
+                href="/reservations"
+                onClick={() => setOpen(false)}
+              >
+                Reservations
+              </Link>
+              <Link
+                className="block py-2 text-sm font-medium"
+                href="/account"
+                onClick={() => setOpen(false)}
+              >
+                Account
+              </Link>
               <Link
                 className="block py-2 text-sm font-medium"
                 href="/dashboard"

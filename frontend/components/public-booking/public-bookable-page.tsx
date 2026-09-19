@@ -45,6 +45,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { CustomerShell } from "../layout/customer-shell";
 import { PublicShell } from "../public/public-shell";
 import {
   clearBookingSelection,
@@ -362,13 +363,13 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
 
   if (loading)
     return (
-      <PublicShell context="Public booking">
+      <BookingExperienceShell authenticated={sessionStatus === "authenticated" && !!user}>
         <LoadingState />
-      </PublicShell>
+      </BookingExperienceShell>
     );
   if (errorStatus !== null || !bookable) {
     return (
-      <PublicShell context="Public booking">
+      <BookingExperienceShell authenticated={sessionStatus === "authenticated" && !!user}>
         <StatePanel
           title={
             errorStatus === 404
@@ -381,20 +382,34 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
               : "Please try again shortly."
           }
         />
-      </PublicShell>
+      </BookingExperienceShell>
     );
   }
   if (confirmation)
-    return (
-      <PublicShell context="Public booking">
-        <ConfirmationState confirmation={confirmation} />
-      </PublicShell>
+    return sessionStatus === "authenticated" && user ? (
+      <BookingExperienceShell authenticated>
+        <ConfirmationState
+          confirmation={confirmation}
+          pricingType={bookable.pricingType}
+        />
+      </BookingExperienceShell>
+    ) : (
+      <BookingExperienceShell authenticated={false}>
+        <ConfirmationState
+          confirmation={confirmation}
+          pricingType={bookable.pricingType}
+        />
+      </BookingExperienceShell>
     );
   if (requestSubmitted)
-    return (
-      <PublicShell context="Public booking">
+    return sessionStatus === "authenticated" && user ? (
+      <BookingExperienceShell authenticated>
         <RequestSubmittedState reservation={requestSubmitted} />
-      </PublicShell>
+      </BookingExperienceShell>
+    ) : (
+      <BookingExperienceShell authenticated={false}>
+        <RequestSubmittedState reservation={requestSubmitted} />
+      </BookingExperienceShell>
     );
 
   const fixedSlots =
@@ -411,7 +426,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
       : 0;
 
   return (
-    <PublicShell context="Public booking">
+    <BookingExperienceShell authenticated={sessionStatus === "authenticated" && !!user}>
       <header className="rounded-[8px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6">
         <Link
           className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
@@ -783,7 +798,11 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
             <div className="border-t border-slate-200 pt-3">
               <SummaryRow
                 label="Total"
-                value={formatMoneyMinorUnits(total, bookable.currency)}
+                value={
+                  bookable.pricingType === "FREE"
+                    ? "Free"
+                    : formatMoneyMinorUnits(total, bookable.currency)
+                }
               />
             </div>
           </dl>
@@ -794,8 +813,28 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
           </p>
         </aside>
       </div>
-    </PublicShell>
+    </BookingExperienceShell>
   );
+}
+
+function BookingExperienceShell({
+  authenticated,
+  children,
+}: {
+  authenticated: boolean;
+  children: React.ReactNode;
+}) {
+  if (authenticated) {
+    return (
+      <CustomerShell>
+        <div className="mx-auto w-full max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
+          {children}
+        </div>
+      </CustomerShell>
+    );
+  }
+
+  return <PublicShell context="Public booking">{children}</PublicShell>;
 }
 
 function DetailsStep({
@@ -897,7 +936,7 @@ function ReviewStep({
   onBack: () => void;
   onConfirm: () => void;
 }) {
-  const paid = total > 0;
+  const paid = bookable.pricingType === "PAID";
   return (
     <div className="mt-6 rounded-[8px] border border-slate-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-950">Review request</h3>
@@ -917,7 +956,11 @@ function ReviewStep({
         />
         <SummaryRow
           label="Total"
-          value={formatMoney(total, bookable.currency)}
+          value={
+            bookable.pricingType === "FREE"
+              ? "Free"
+              : formatMoney(total, bookable.currency)
+          }
         />
       </dl>
       {paid && (
@@ -956,8 +999,10 @@ function ReviewStep({
 
 function ConfirmationState({
   confirmation,
+  pricingType,
 }: {
   confirmation: ReservationConfirmation;
+  pricingType: PublicBookable["pricingType"];
 }) {
   return (
     <section className="rounded-[8px] border border-slate-200 bg-white p-6">
@@ -993,17 +1038,21 @@ function ConfirmationState({
         <SummaryRow label="Quantity" value={String(confirmation.quantity)} />
         <SummaryRow
           label="Total"
-          value={formatMoneyMinorUnits(
-            confirmation.amount,
-            confirmation.currency,
-          )}
+          value={
+            pricingType === "FREE"
+              ? "Free"
+              : formatMoneyMinorUnits(
+                  confirmation.amount,
+                  confirmation.currency,
+                )
+          }
         />
       </dl>
       <Link
-        className="mt-7 inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
-        href="/"
+        className="mt-7 inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-zinc-950 px-4 text-[13px] font-medium text-white hover:bg-zinc-800"
+        href={`/reservations/${confirmation.id}`}
       >
-        <ArrowLeft className="size-4" aria-hidden="true" /> Return to Bookable
+        View reservation <ArrowRight className="size-4" aria-hidden="true" />
       </Link>
     </section>
   );
@@ -1027,6 +1076,12 @@ function RequestSubmittedState({
         organization approves it.
       </p>
       <SummaryRow label="Reference" value={reservation.id} />
+      <Link
+        className="mt-6 inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-zinc-950 px-4 text-[13px] font-medium text-white hover:bg-zinc-800"
+        href={`/reservations/${reservation.id}`}
+      >
+        View reservation <ArrowRight className="size-4" aria-hidden="true" />
+      </Link>
     </section>
   );
 }

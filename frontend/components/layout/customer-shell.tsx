@@ -34,6 +34,16 @@ export function CustomerShell({ children }: { children: ReactNode }) {
             >
               Reservations
             </Link>
+            <Link
+              className={`rounded-[6px] px-3 py-2 text-[13px] font-medium ${
+                pathname.startsWith("/account")
+                  ? "bg-slate-100 text-slate-950"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+              }`}
+              href="/account"
+            >
+              Account
+            </Link>
             <ProfileMenu user={user} logout={logout} />
           </nav>
         </div>
