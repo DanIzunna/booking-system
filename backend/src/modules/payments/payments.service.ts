@@ -6,6 +6,7 @@ import {
 import { PaymentStatus, PricingType, ReservationStatus } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { ReservationsService } from "../reservations/reservations.service";
+import { PaymentAccountReadinessService } from "../payment-accounts/payment-account-readiness.service";
 import { InitializePaymentResponseDto } from "./dto/initialize-payment-response.dto";
 import { FakePaymentProvider } from "./providers/fake-payment-provider";
 import {
@@ -20,6 +21,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reservations: ReservationsService,
+    private readonly paymentReadiness: PaymentAccountReadinessService,
     fakeProvider: FakePaymentProvider,
   ) {
     this.providers = new Map([[fakeProvider.name, fakeProvider]]);
@@ -31,7 +33,10 @@ export class PaymentsService {
   ): Promise<InitializePaymentResponseDto> {
     const reservation = await this.prisma.reservation.findFirst({
       where: { id: reservationId, customerId },
-      include: { payment: true, bookable: { select: { pricingType: true } } },
+      include: {
+        payment: true,
+        bookable: { select: { organizationId: true, pricingType: true } },
+      },
     });
     if (!reservation) throw new NotFoundException("Reservation not found");
     if (
@@ -68,7 +73,23 @@ export class PaymentsService {
       };
     }
 
-    const provider = this.provider("fake");
+    let providerName = "fake";
+    if (this.paymentReadiness.isEnforced()) {
+      const readiness = await this.paymentReadiness.isReady(
+        reservation.bookable.organizationId,
+      );
+      if (!readiness.ready) {
+        throw new ConflictException(
+          "A ready payment account is required for paid payments",
+        );
+      }
+      providerName =
+        readiness.provider === "STRIPE" && process.env.NODE_ENV !== "production"
+          ? "fake"
+          : (readiness.provider?.toLowerCase() ?? "fake");
+    }
+
+    const provider = this.provider(providerName);
     if (reservation.payment?.status === PaymentStatus.PENDING) {
       return {
         paymentId: reservation.payment.id,

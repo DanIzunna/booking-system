@@ -110,21 +110,32 @@ export function AppSidebar({
                 More soon
               </span>
             )}
-            {[
-              { label: "Schedule", icon: CalendarDays },
-              { label: "Settings", icon: Settings2 },
-            ].map(({ label, icon: Icon }) => (
-              <span
-                className={navClass(false, collapsed, true)}
-                key={label}
-                title={label}
-                aria-label={label}
-              >
-                <Icon className="size-4 shrink-0" />
-                {!collapsed && <span className="truncate">{label}</span>}
-                {collapsed && <span className="sr-only">{label}</span>}
-              </span>
-            ))}
+            <span
+              className={navClass(false, collapsed, true)}
+              title="Schedule"
+              aria-label="Schedule"
+            >
+              <CalendarDays className="size-4 shrink-0" />
+              {!collapsed && <span className="truncate">Schedule</span>}
+              {collapsed && <span className="sr-only">Schedule</span>}
+            </span>
+            <Link
+              className={navClass(
+                pathname.startsWith(`/organizations/${organizationId}/settings`),
+                collapsed,
+              )}
+              href={`/organizations/${organizationId}/settings/payments`}
+              onClick={onNavigate}
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings2 className="size-4 shrink-0" />
+              {!collapsed && <span className="truncate">Settings</span>}
+              {!collapsed && (
+                <ChevronRight className="ml-auto size-3.5 opacity-50" />
+              )}
+              {collapsed && <span className="sr-only">Settings</span>}
+            </Link>
           </>
         )}
       </nav>

@@ -259,6 +259,60 @@ describe("Organizations & multi-tenancy (integration)", () => {
     ).toEqual(expect.objectContaining({ role: "OWNER" }));
   });
 
+  it("scopes payment-account access and keeps mutations owner-only", async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${organization.id}/payment-account`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(200)
+      .then((response) => expect(response.body).toBeNull());
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/organizations/${organization.id}/payment-account/connect`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .post(`/api/v1/organizations/${organization.id}/payment-account/sync`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organization.id}/payment-account/disconnect`,
+      )
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(403);
+
+    const account = await prisma.organizationPaymentAccount.create({
+      data: {
+        organizationId: organization.id,
+        provider: "STRIPE",
+        providerAccountId: `acct_org_test_${Date.now()}`,
+        status: "ONBOARDING",
+        readyForPayments: false,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${organization.id}/payment-account`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(200)
+      .then((response) => expect(response.body.id).toBe(account.id));
+    await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${unrelatedOrganization.id}/payment-account`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organization.id}/payment-account/disconnect`,
+      )
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201)
+      .then((response) => {
+        expect(response.body.status).toBe("DISCONNECTED");
+        expect(response.body.readyForPayments).toBe(false);
+      });
+  });
+
   async function registerUser(label: string): Promise<RegisteredUser> {
     const email = `${label}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`;
     const response = await request(app.getHttpServer())

@@ -199,6 +199,21 @@ describe("Reservations (integration)", () => {
     );
   });
 
+  it("rejects paid reservations when the organization payment account is not ready", async () => {
+    const bookable = await createBookable({ price: 1000 });
+    const previous = process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED;
+    process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED = "true";
+    try {
+      await createReservation(customer, bookable, 409);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED;
+      } else {
+        process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED = previous;
+      }
+    }
+  });
+
   it("confirms only the authenticated customer's free reservation", async () => {
     const bookable = await createBookable({ capacity: 2 });
     const created = await createReservation(customer, bookable);

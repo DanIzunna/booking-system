@@ -273,21 +273,16 @@ These are deliberately left open because they are implementation/detail decision
 
 ### OQ-01 — Payment provider
 
-**Status:** Open.
+**Status:** Stripe Connect Phase 1 implemented.
 
-The architecture supports a provider adapter.
+The payment-account domain remains provider-agnostic through
+`OrganizationPaymentAccount` and the `PaymentProvider` enum. `STRIPE` is the
+first implemented provider. `PAYSTACK` is reserved as a future provider value;
+no Paystack integration exists.
 
-The exact provider will be selected before Phase 9.
-
-Selection criteria:
-
-- Nigeria availability,
-- supported currencies,
-- API quality,
-- webhook reliability,
-- developer experience,
-- transaction fees,
-- test/sandbox environment.
+Stripe SDK interaction is isolated behind the Stripe Connect service. Generic
+readiness is exposed through `PaymentAccountReadinessService`, so Bookable and
+reservation rules do not depend directly on Stripe concepts.
 
 ---
 
@@ -390,34 +385,35 @@ The exact ImageKit upload/signature mechanism will be chosen during Phase 10 bas
 
 ### OQ-08 — Exact payment amount model
 
-The MVP supports paid Bookables, but the exact pricing model needs one final implementation decision.
+**Status:** Implemented for the pricing foundation.
 
-Possible initial model:
+Bookables use explicit pricing:
 
 ```text
-Bookable
-price
-currency
+PricingType.FREE → price = NULL, currency = NULL
+PricingType.PAID → positive integer minor-unit price and supported currency
 ```
 
-with reservation amount derived from the Bookable and reservation quantity/duration according to the defined pricing rule.
+Pricing is server-authoritative. Reservation amounts remain server-derived
+snapshots based on Bookable pricing and quantity.
 
-**Important:** pricing must be server-authoritative.
-
-If we don't need sophisticated dynamic pricing, don't introduce it.
+No generic dynamic pricing engine is implemented.
 
 ---
 
 ### OQ-09 — Payment pricing semantics
 
-Before Phase 9, confirm whether MVP pricing is:
+**Status:** Implemented for the current MVP boundary.
 
-- fixed per reservation,
-- per time unit,
-- per quantity,
-- or a deliberately limited combination.
+The current model is per reservation quantity unit. A reservation snapshots:
 
-Do not build a generic pricing engine unless an actual requirement justifies it.
+```text
+amount = Bookable price × reservation quantity
+currency = Bookable currency
+```
+
+FREE reservations retain an amount of `0` only as a compatibility snapshot;
+`PricingType` remains the authoritative free/paid decision.
 
 ---
 
@@ -565,7 +561,7 @@ Advanced analytics
 Email notifications
 SMS notifications
 Calendar integrations
-Multiple payment providers
+Additional payment providers beyond the current Stripe Connect foundation
 Advanced RBAC
 Complex scheduling precedence
 Microservices

@@ -8,6 +8,7 @@ import { ReservationsModule } from "./modules/reservations/reservations.module";
 import { PublicBookingModule } from "./modules/public-booking/public-booking.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { AvailabilityModule } from "./modules/availability/availability.module";
+import { PaymentAccountsModule } from "./modules/payment-accounts/payment-accounts.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AvailabilityModule } from "./modules/availability/availability.module";
     ReservationsModule,
     PublicBookingModule,
     PaymentsModule,
+    PaymentAccountsModule,
     HealthModule,
   ],
 })

@@ -251,6 +251,49 @@ describe("Bookables (integration)", () => {
     }
   });
 
+  it("requires a ready payment account to publish PAID Bookables", async () => {
+    const paidDraft = await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Payment Readiness Room",
+        slug: uniqueSlug("payment-readiness"),
+        capacity: 1,
+        pricingType: "PAID",
+        price: 1000,
+        currency: "NGN",
+        reservationRule: {
+          durationMode: "FIXED",
+          fixedDuration: 3600,
+        },
+      })
+      .expect(201);
+    bookableIds.push(paidDraft.body.id);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${paidDraft.body.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({ status: "PUBLISHED" })
+      .expect(409);
+
+    await prisma.organizationPaymentAccount.create({
+      data: {
+        organizationId: organization.id,
+        provider: "STRIPE",
+        providerAccountId: `acct_test_${Date.now()}`,
+        status: "READY",
+        readyForPayments: true,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${paidDraft.body.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({ status: "PUBLISHED" })
+      .expect(200);
+  });
+
   it("configures reservation rules and requires one before publishing", async () => {
     const withoutRule = await createBookable(owner, organization.id, {
       name: "Rule Validation Room",

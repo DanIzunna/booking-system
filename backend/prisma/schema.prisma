@@ -64,6 +64,18 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentProvider {
+  STRIPE
+  PAYSTACK
+}
+
+enum OrganizationPaymentAccountStatus {
+  ONBOARDING
+  READY
+  RESTRICTED
+  DISCONNECTED
+}
+
 enum AccessCodeStatus {
   ACTIVE
   USED
@@ -94,6 +106,26 @@ model Organization {
   updatedAt     DateTime                 @updatedAt @db.Timestamptz(3)
   memberships   OrganizationMembership[]
   bookables     Bookable[]
+  paymentAccount OrganizationPaymentAccount?
+}
+
+model OrganizationPaymentAccount {
+  id                String                           @id @default(uuid()) @db.Uuid
+  organizationId    String                           @unique @db.Uuid
+  provider          PaymentProvider
+  providerAccountId String                           @db.VarChar(255)
+  status            OrganizationPaymentAccountStatus @default(ONBOARDING)
+  readyForPayments  Boolean                          @default(false)
+  createdAt         DateTime                         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                         @updatedAt @db.Timestamptz(3)
+  lastSyncedAt      DateTime?
+  connectedAt       DateTime?
+  disconnectedAt    DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([organizationId, status])
 }
 
 model OrganizationMembership {

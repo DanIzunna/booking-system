@@ -16,6 +16,7 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { OrganizationAuthorizationService } from "../organizations/organization-authorization.service";
+import { PaymentAccountReadinessService } from "../payment-accounts/payment-account-readiness.service";
 import { AvailabilityEngineService } from "../availability/availability-engine.service";
 import { CreateReservationDto } from "./dto/create-reservation.dto";
 import { ListOrganizationReservationsDto } from "./dto/list-organization-reservations.dto";
@@ -97,6 +98,7 @@ export class ReservationsService {
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityEngineService,
     private readonly organizationAuthorization: OrganizationAuthorizationService,
+    private readonly paymentReadiness: PaymentAccountReadinessService,
   ) {}
 
   async listForOrganization(
@@ -159,6 +161,32 @@ export class ReservationsService {
   ) {
     const requested = this.parseRequestedInterval(input);
     const bookable = await this.loadReservableBookable(bookableId);
+    if (
+      bookable.pricingType === PricingType.PAID &&
+      this.paymentReadiness.isEnforced()
+    ) {
+      const readiness = await this.paymentReadiness.isReady(
+        bookable.organizationId,
+      );
+      if (!readiness.ready) {
+        throw new ConflictException(
+          "A ready payment account is required for paid reservations",
+        );
+      }
+    }
+    if (
+      bookable.pricingType === PricingType.PAID &&
+      this.paymentReadiness.isEnforced()
+    ) {
+      const readiness = await this.paymentReadiness.isReady(
+        bookable.organizationId,
+      );
+      if (!readiness.ready) {
+        throw new ConflictException(
+          "A ready payment account is required for paid reservations",
+        );
+      }
+    }
     const rule = bookable.reservationRule;
     if (!rule) {
       throw new ConflictException(

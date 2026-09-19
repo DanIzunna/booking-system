@@ -140,6 +140,21 @@ describe("Payments (integration)", () => {
     await initialize(customer, fixture.reservationId, 409);
   });
 
+  it("rejects paid initialization when the organization payment account is not ready", async () => {
+    const fixture = await createFixture(1500, "NGN", customer);
+    const previous = process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED;
+    process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED = "true";
+    try {
+      await initialize(customer, fixture.reservationId, 409);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED;
+      } else {
+        process.env.PAYMENT_ACCOUNT_READINESS_ENFORCED = previous;
+      }
+    }
+  });
+
   it("enforces customer ownership and does not let organization ownership bypass it", async () => {
     const fixture = await createFixture(1000, "NGN", customer);
     await request(app.getHttpServer())

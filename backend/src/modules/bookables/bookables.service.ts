@@ -11,6 +11,7 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { OrganizationAuthorizationService } from "../organizations/organization-authorization.service";
+import { PaymentAccountReadinessService } from "../payment-accounts/payment-account-readiness.service";
 import { CreateBookableDto } from "./dto/create-bookable.dto";
 import { ListBookablesDto } from "./dto/list-bookables.dto";
 import { UpdateBookableDto } from "./dto/update-bookable.dto";
@@ -39,6 +40,7 @@ export class BookablesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly organizationAuthorization: OrganizationAuthorizationService,
+    private readonly paymentReadiness: PaymentAccountReadinessService,
   ) {}
 
   async create(userId: string, input: CreateBookableDto) {
@@ -50,6 +52,12 @@ export class BookablesService {
     const baseSlug = input.slug ?? slugify(input.name);
     validatePricing(input.pricingType, input.price, input.currency);
     validateReservationRule(input.reservationRule);
+    if (
+      input.status === BookableStatus.PUBLISHED &&
+      input.pricingType === PricingType.PAID
+    ) {
+      await this.requirePaidReadiness(input.organizationId);
+    }
     if (input.status === BookableStatus.PUBLISHED && !input.reservationRule) {
       throw new ConflictException(
         "A reservation rule is required before publishing a Bookable",
@@ -164,6 +172,13 @@ export class BookablesService {
     }
     validateReservationRule(input.reservationRule);
     if (
+      pricingType === PricingType.PAID &&
+      (input.status === BookableStatus.PUBLISHED ||
+        bookable.status === BookableStatus.PUBLISHED)
+    ) {
+      await this.requirePaidReadiness(bookable.organizationId);
+    }
+    if (
       input.status === BookableStatus.PUBLISHED &&
       !input.reservationRule &&
       !bookable.reservationRule
@@ -256,6 +271,15 @@ export class BookablesService {
     }
 
     return bookable;
+  }
+
+  private async requirePaidReadiness(organizationId: string): Promise<void> {
+    const readiness = await this.paymentReadiness.isReady(organizationId);
+    if (!readiness.ready) {
+      throw new ConflictException(
+        "A ready payment account is required to publish a PAID Bookable",
+      );
+    }
   }
 }
 
