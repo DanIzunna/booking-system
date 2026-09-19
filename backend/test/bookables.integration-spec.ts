@@ -141,6 +141,116 @@ describe("Bookables (integration)", () => {
       .expect(400);
   });
 
+  it("accepts confirmation policy, price, and currency on create and update", async () => {
+    const created = await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Priced Conference Room",
+        slug: uniqueSlug("priced-room"),
+        capacity: 3,
+        confirmationPolicy: "REQUIRES_APPROVAL",
+        pricingType: "PAID",
+        price: 2500,
+        currency: "USD",
+      })
+      .expect(201);
+
+    expect(created.body).toEqual(
+      expect.objectContaining({
+        confirmationPolicy: "REQUIRES_APPROVAL",
+        price: 2500,
+        currency: "USD",
+      }),
+    );
+
+    const updated = await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${created.body.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        confirmationPolicy: "AUTOMATIC",
+        pricingType: "PAID",
+        price: 4000,
+        currency: "NGN",
+      })
+      .expect(200);
+
+    expect(updated.body).toEqual(
+      expect.objectContaining({
+        confirmationPolicy: "AUTOMATIC",
+        price: 4000,
+        currency: "NGN",
+      }),
+    );
+    bookableIds.push(created.body.id);
+  });
+
+  it("enforces explicit FREE and PAID pricing combinations", async () => {
+    const free = await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Free Pricing Room",
+        slug: uniqueSlug("free-pricing"),
+        capacity: 1,
+        pricingType: "FREE",
+        price: null,
+        currency: null,
+      })
+      .expect(201);
+    bookableIds.push(free.body.id);
+    expect(free.body).toEqual(
+      expect.objectContaining({
+        pricingType: "FREE",
+        price: null,
+        currency: null,
+      }),
+    );
+
+    const paid = await request(app.getHttpServer())
+      .post("/api/v1/bookables")
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        organizationId: organization.id,
+        name: "Paid Pricing Room",
+        slug: uniqueSlug("paid-pricing"),
+        capacity: 1,
+        pricingType: "PAID",
+        price: 100,
+        currency: "USD",
+      })
+      .expect(201);
+    bookableIds.push(paid.body.id);
+    expect(paid.body).toEqual(
+      expect.objectContaining({
+        pricingType: "PAID",
+        price: 100,
+        currency: "USD",
+      }),
+    );
+
+    for (const input of [
+      { pricingType: "PAID", price: 0, currency: "USD" },
+      { pricingType: "PAID", currency: "USD" },
+      { pricingType: "FREE", price: 500, currency: "USD" },
+      { pricingType: "PAID", price: 100, currency: "JPY" },
+    ]) {
+      await request(app.getHttpServer())
+        .post("/api/v1/bookables")
+        .set("Authorization", `Bearer ${owner.accessToken}`)
+        .send({
+          organizationId: organization.id,
+          name: "Invalid Pricing Room",
+          slug: uniqueSlug("invalid-pricing"),
+          capacity: 1,
+          ...input,
+        })
+        .expect(400);
+    }
+  });
+
   it("configures reservation rules and requires one before publishing", async () => {
     const withoutRule = await createBookable(owner, organization.id, {
       name: "Rule Validation Room",
@@ -180,6 +290,16 @@ describe("Bookables (integration)", () => {
         fixedDuration: 3600,
       }),
     );
+    await expect(
+      prisma.bookable.findUnique({
+        where: { id: withoutRule.id },
+        select: { reservationRule: true },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        reservationRule: expect.objectContaining({ fixedDuration: 3600 }),
+      }),
+    );
 
     await request(app.getHttpServer())
       .patch(`/api/v1/bookables/${withoutRule.id}`)
@@ -207,7 +327,87 @@ describe("Bookables (integration)", () => {
         name: "Direct Published Without Rule",
         slug: uniqueSlug("direct-published-without-rule"),
         capacity: 1,
+        pricingType: "FREE",
         status: "PUBLISHED",
+      })
+      .expect(409);
+  });
+
+  it("persists flexible reservation durations in seconds and rejects invalid ranges", async () => {
+    const flexible = await createBookable(owner, organization.id, {
+      name: "Flexible Duration Room",
+      slug: uniqueSlug("flexible-duration"),
+      capacity: 1,
+    });
+    bookableIds.push(flexible.id);
+
+    const configured = await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${flexible.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        reservationRule: {
+          durationMode: "FLEXIBLE",
+          minimumDuration: 3600,
+          maximumDuration: 14400,
+        },
+      })
+      .expect(200);
+
+    expect(configured.body.reservationRule).toEqual(
+      expect.objectContaining({
+        durationMode: "FLEXIBLE",
+        minimumDuration: 3600,
+        maximumDuration: 14400,
+      }),
+    );
+    await expect(
+      prisma.bookable.findUnique({
+        where: { id: flexible.id },
+        select: { reservationRule: true },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        reservationRule: expect.objectContaining({
+          durationMode: "FLEXIBLE",
+          minimumDuration: 3600,
+          maximumDuration: 14400,
+        }),
+      }),
+    );
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${flexible.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        reservationRule: {
+          durationMode: "FLEXIBLE",
+          minimumDuration: 0,
+          maximumDuration: 14400,
+        },
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${flexible.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        reservationRule: {
+          durationMode: "FLEXIBLE",
+          minimumDuration: 3600,
+          maximumDuration: 0,
+        },
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${flexible.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        reservationRule: {
+          durationMode: "FLEXIBLE",
+          minimumDuration: 14400,
+          maximumDuration: 3600,
+        },
       })
       .expect(409);
   });
@@ -221,6 +421,7 @@ describe("Bookables (integration)", () => {
         name: "Duplicate Slug",
         slug: ownerBookable.slug,
         capacity: 1,
+        pricingType: "FREE",
       })
       .expect(409);
   });
@@ -233,6 +434,7 @@ describe("Bookables (integration)", () => {
         organizationId: organization.id,
         name: "Generated Conference Room",
         capacity: 1,
+        pricingType: "FREE",
       })
       .expect(201);
     bookableIds.push(first.body.id);
@@ -244,6 +446,7 @@ describe("Bookables (integration)", () => {
         organizationId: organization.id,
         name: "Generated Conference Room",
         capacity: 1,
+        pricingType: "FREE",
       })
       .expect(201);
     bookableIds.push(second.body.id);
@@ -355,6 +558,150 @@ describe("Bookables (integration)", () => {
     ).resolves.toEqual(expect.objectContaining({ status: "ARCHIVED" }));
   });
 
+  it("restores an archived Bookable to DRAFT and keeps it non-public", async () => {
+    const archived = await createBookable(owner, organization.id, {
+      name: "Restorable Room",
+      slug: uniqueSlug("restorable-room"),
+      capacity: 3,
+    });
+    bookableIds.push(archived.id);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${archived.id}/archive`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${archived.id}/restore`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: archived.id,
+        slug: archived.slug,
+        status: "DRAFT",
+        capacity: archived.capacity,
+      }),
+    );
+    await expect(
+      prisma.bookable.findUnique({ where: { id: archived.id } }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: archived.id,
+        slug: archived.slug,
+        status: "DRAFT",
+        capacity: archived.capacity,
+      }),
+    );
+    await request(app.getHttpServer())
+      .get(`/api/v1/public/bookables/${archived.slug}`)
+      .expect(404);
+  });
+
+  it("rejects restore attempts for unauthorized users and non-archived states", async () => {
+    const archiveTarget = await createBookable(owner, organization.id, {
+      name: "Protected Archive",
+      slug: uniqueSlug("protected-archive"),
+      capacity: 2,
+    });
+    bookableIds.push(archiveTarget.id);
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${archiveTarget.id}/archive`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${archiveTarget.id}/restore`)
+      .set("Authorization", `Bearer ${member.accessToken}`)
+      .expect(403);
+    await expect(
+      prisma.bookable.findUnique({ where: { id: archiveTarget.id } }),
+    ).resolves.toEqual(expect.objectContaining({ status: "ARCHIVED" }));
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${archiveTarget.id}/restore`)
+      .set("Authorization", `Bearer ${outsider.accessToken}`)
+      .expect(404);
+    await expect(
+      prisma.bookable.findUnique({ where: { id: archiveTarget.id } }),
+    ).resolves.toEqual(expect.objectContaining({ status: "ARCHIVED" }));
+
+    const draft = await createBookable(owner, organization.id, {
+      name: "Draft Only",
+      slug: uniqueSlug("draft-only"),
+      capacity: 4,
+    });
+    bookableIds.push(draft.id);
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${draft.id}/restore`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(409);
+
+    const published = await createBookable(owner, organization.id, {
+      name: "Published Only",
+      slug: uniqueSlug("published-only"),
+      capacity: 4,
+    });
+    bookableIds.push(published.id);
+    await prisma.bookable.update({
+      where: { id: published.id },
+      data: { status: "PUBLISHED" },
+    });
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${published.id}/restore`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(409);
+  });
+
+  it("preserves Bookable data when restoring", async () => {
+    const target = await createBookable(owner, organization.id, {
+      name: "Data Preservation Room",
+      slug: uniqueSlug("data-preservation"),
+      capacity: 7,
+    });
+    bookableIds.push(target.id);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/bookables/${target.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .send({
+        pricingType: "PAID",
+        price: 2500,
+        currency: "USD",
+      })
+      .expect(200);
+
+    await prisma.bookable.update({
+      where: { id: target.id },
+      data: {
+        status: "ARCHIVED",
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookables/${target.id}/restore`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201);
+
+    const restored = await prisma.bookable.findUnique({
+      where: { id: target.id },
+      include: { reservationRule: true },
+    });
+
+    expect(restored).toEqual(
+      expect.objectContaining({
+        id: target.id,
+        slug: target.slug,
+        status: "DRAFT",
+        capacity: 7,
+        price: 2500,
+        currency: "USD",
+      }),
+    );
+    expect(restored?.reservationRule).toBeNull();
+  });
+
   it("rejects unauthenticated Bookable requests", async () => {
     await request(app.getHttpServer())
       .get(`/api/v1/bookables/${ownerBookable.id}`)
@@ -419,12 +766,18 @@ describe("Bookables (integration)", () => {
       description?: string;
       slug: string;
       capacity: number;
+      price?: number;
+      currency?: string;
     },
   ): Promise<BookableRecord> {
     const response = await request(app.getHttpServer())
       .post("/api/v1/bookables")
       .set("Authorization", `Bearer ${user.accessToken}`)
-      .send({ organizationId, ...input })
+      .send({
+        organizationId,
+        pricingType: input.price && input.price > 0 ? "PAID" : "FREE",
+        ...input,
+      })
       .expect(201);
 
     return response.body as BookableRecord;

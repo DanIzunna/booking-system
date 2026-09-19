@@ -1,7 +1,11 @@
 import { Transform, Type } from "class-transformer";
 import { ValidateNested } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { BookableStatus } from "@prisma/client";
+import {
+  BookableStatus,
+  ConfirmationPolicy,
+  PricingType,
+} from "@prisma/client";
 import {
   IsEnum,
   IsInt,
@@ -44,12 +48,42 @@ export class UpdateBookableDto {
   @IsEnum(BookableStatus)
   status?: BookableStatus;
 
+  @ApiPropertyOptional({ enum: ConfirmationPolicy })
+  @IsOptional()
+  @IsEnum(ConfirmationPolicy)
+  confirmationPolicy?: ConfirmationPolicy;
+
+  @ApiPropertyOptional({ enum: PricingType })
+  @IsOptional()
+  @IsEnum(PricingType)
+  pricingType?: PricingType;
+
   @ApiPropertyOptional({ example: 2, minimum: 1 })
   @Type(() => Number)
   @IsOptional()
   @IsInt()
   @Min(1)
   capacity?: number;
+
+  @ApiPropertyOptional({ example: 2500, minimum: 1, nullable: true })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  price?: number | null;
+
+  @ApiPropertyOptional({
+    example: "NGN",
+    pattern: "^[A-Z]{3}$",
+    nullable: true,
+  })
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim().toUpperCase() : value,
+  )
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{3}$/)
+  currency?: string | null;
 
   @ApiPropertyOptional({ type: ReservationRuleDto })
   @IsOptional()

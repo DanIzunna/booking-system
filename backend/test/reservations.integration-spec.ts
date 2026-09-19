@@ -234,7 +234,7 @@ describe("Reservations (integration)", () => {
     const bookable = await createBookable({ capacity: 2 });
     await prisma.bookable.update({
       where: { id: bookable.id },
-      data: { price: 1000 },
+      data: { pricingType: "PAID", price: 1000, currency: "NGN" },
     });
     const created = await createReservation(customer, bookable);
     await request(app.getHttpServer())
@@ -876,10 +876,12 @@ describe("Reservations (integration)", () => {
         name: `Reservation Bookable ${Date.now()}`,
         slug: `reservation-bookable-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         status: options.status ?? BookableStatus.PUBLISHED,
+        pricingType: (options.price ?? 0) > 0 ? "PAID" : "FREE",
         confirmationPolicy:
           options.confirmationPolicy ?? ConfirmationPolicy.AUTOMATIC,
         capacity: options.capacity ?? 2,
-        price: options.price ?? 0,
+        price: (options.price ?? 0) > 0 ? options.price : null,
+        currency: (options.price ?? 0) > 0 ? "NGN" : null,
         reservationRule: {
           create: {
             durationMode,
@@ -942,7 +944,7 @@ describe("Reservations (integration)", () => {
       organizationId,
       startAt,
       endAt,
-      currency: response.currency,
+      currency: response.currency ?? "NGN",
       startAtPlusThirtyMinutes: new Date(startAt.getTime() + 30 * 60 * 1000),
     };
   }

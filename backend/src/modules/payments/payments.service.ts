@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { PaymentStatus, ReservationStatus } from "@prisma/client";
+import { PaymentStatus, PricingType, ReservationStatus } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { ReservationsService } from "../reservations/reservations.service";
 import { InitializePaymentResponseDto } from "./dto/initialize-payment-response.dto";
@@ -31,7 +31,7 @@ export class PaymentsService {
   ): Promise<InitializePaymentResponseDto> {
     const reservation = await this.prisma.reservation.findFirst({
       where: { id: reservationId, customerId },
-      include: { payment: true },
+      include: { payment: true, bookable: { select: { pricingType: true } } },
     });
     if (!reservation) throw new NotFoundException("Reservation not found");
     if (
@@ -54,7 +54,7 @@ export class PaymentsService {
     if (reservation.amount < 0 || !/^[A-Z]{3}$/.test(reservation.currency)) {
       throw new ConflictException("Reservation money snapshot is invalid");
     }
-    if (reservation.amount === 0) {
+    if (reservation.bookable.pricingType === PricingType.FREE) {
       const confirmed = await this.reservations.confirmFreeReservation(
         customerId,
         reservationId,
@@ -77,6 +77,8 @@ export class PaymentsService {
         currency: reservation.payment.currency,
         checkoutUrl: provider.checkoutUrl(
           reservation.payment.providerReference,
+          reservation.payment.amount,
+          reservation.payment.currency,
         ),
         providerReference: reservation.payment.providerReference,
       };
@@ -117,7 +119,11 @@ export class PaymentsService {
           status: payment.status,
           amount: payment.amount,
           currency: payment.currency,
-          checkoutUrl: provider.checkoutUrl(payment.providerReference),
+          checkoutUrl: provider.checkoutUrl(
+            payment.providerReference,
+            payment.amount,
+            payment.currency,
+          ),
           providerReference: payment.providerReference,
         };
       }
@@ -171,6 +177,10 @@ export class PaymentsService {
       );
 
     return this.prisma.$transaction(async (transaction) => {
+      await this.reservations.lockForPaymentTransition(
+        transaction,
+        payment.reservationId,
+      );
       const updated = await transaction.payment.updateMany({
         where: { id: payment.id, status: PaymentStatus.PENDING },
         data: { status: PaymentStatus.SUCCEEDED, paidAt: new Date() },
@@ -189,14 +199,18 @@ export class PaymentsService {
     });
   }
 
-  private provider(
-    name: string,
-  ): PaymentProvider & { checkoutUrl(reference: string): string } {
+  private provider(name: string): PaymentProvider & {
+    checkoutUrl(reference: string, amount?: number, currency?: string): string;
+  } {
     const provider = this.providers.get(name);
     if (!provider || !("checkoutUrl" in provider))
       throw new NotFoundException("Payment provider not found");
     return provider as PaymentProvider & {
-      checkoutUrl(reference: string): string;
+      checkoutUrl(
+        reference: string,
+        amount?: number,
+        currency?: string,
+      ): string;
     };
   }
 

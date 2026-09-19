@@ -41,6 +41,7 @@ import type {
   ReservationConfirmation,
   ReservationResult,
 } from "../../types/reservations";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -317,7 +318,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
               quantity: Number(quantity),
             },
       );
-      if (created.amount !== 0) {
+      if (bookable.pricingType === "PAID") {
         setReservationError(
           "Your reservation was created, but payment is not available yet.",
         );
@@ -404,11 +405,14 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
   const canContinue = isFlexible
     ? Boolean(bookingSlot && availabilityCheck === "available")
     : Boolean(effectiveSelectedSlot);
-  const total = bookable.price * Number(quantity || 0);
+  const total =
+    bookable.pricingType === "PAID"
+      ? (bookable.price ?? 0) * Number(quantity || 0)
+      : 0;
 
   return (
     <PublicShell context="Public booking">
-      <header className="border-b border-slate-200 pb-7">
+      <header className="rounded-[8px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6">
         <Link
           className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
           href={`/book/${organizationSlug}`}
@@ -427,24 +431,50 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
             {bookable.description}
           </p>
         )}
-        <div className="mt-5 flex flex-wrap gap-3 text-xs text-slate-500">
-          <span className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3">
+        <div className="mt-6 grid gap-2 border-t border-slate-100 pt-5 sm:grid-cols-3">
+          <span className="inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-slate-50 px-3 text-xs text-slate-600">
             <CalendarDays className="size-4" aria-hidden="true" />{" "}
             {formatTimeZoneName(bookable.organization.timezone)}
           </span>
-          <span className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3">
-            Capacity {bookable.capacity}
+          <span className="inline-flex min-h-10 items-center rounded-[6px] bg-slate-50 px-3 text-xs text-slate-600">
+            Capacity {bookable.capacity} per reservation
           </span>
-          <span className="inline-flex min-h-10 items-center rounded-[6px] border border-slate-200 bg-white px-3">
-            {formatMoneyMinorUnits(bookable.price, bookable.currency)} per unit
+          <span className="inline-flex min-h-10 items-center rounded-[6px] bg-slate-50 px-3 text-xs text-slate-600">
+            {bookable.pricingType === "FREE"
+              ? "Free"
+              : `${formatConfiguredMoney(bookable.price, bookable.currency)} per unit`}
+          </span>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Badge
+            variant={
+              bookable.confirmationPolicy === "REQUIRES_APPROVAL"
+                ? "warning"
+                : "success"
+            }
+          >
+            {bookable.confirmationPolicy === "REQUIRES_APPROVAL"
+              ? "Approval required"
+              : "Instant confirmation"}
+          </Badge>
+          <span className="text-xs text-slate-500">
+            {bookable.confirmationPolicy === "REQUIRES_APPROVAL"
+              ? "Your request will be reviewed by the organization."
+              : "Your reservation is confirmed after successful submission."}
           </span>
         </div>
       </header>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <section aria-labelledby="booking-step-heading">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8">
+        <section
+          className="rounded-[8px] border border-slate-200 bg-slate-50 p-4 sm:p-5"
+          aria-labelledby="booking-step-heading"
+        >
           <div className="flex items-center justify-between gap-4">
             <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Booking
+              </p>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 {step === "schedule"
                   ? "Step 1"
@@ -463,9 +493,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
                     : "Review your request"}
               </h2>
             </div>
-            <span className="text-xs text-slate-400">
-              {formatTimeZoneName(bookable.organization.timezone)}
-            </span>
+            <Badge>{formatTimeZoneName(bookable.organization.timezone)}</Badge>
           </div>
 
           {step === "schedule" && (
@@ -510,14 +538,20 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
                   </div>
                 </div>
                 {availabilityLoading && (
-                  <p className="mt-5 text-sm text-slate-500" aria-live="polite">
-                    Loading available times...
-                  </p>
+                  <div className="mt-5 flex items-center gap-2" aria-live="polite">
+                    <Badge variant="neutral">Checking</Badge>
+                    <p className="text-sm text-slate-500">
+                      Loading available times...
+                    </p>
+                  </div>
                 )}
                 {availabilityError && (
-                  <p className="mt-5 text-sm text-rose-700" role="alert">
-                    {availabilityError}
-                  </p>
+                  <div className="mt-5 flex items-start gap-2" role="alert">
+                    <Badge variant="error">Unavailable</Badge>
+                    <p className="text-sm leading-5 text-rose-700">
+                      {availabilityError}
+                    </p>
+                  </div>
                 )}
                 {reservationError && (
                   <p className="mt-5 text-sm text-rose-700" role="alert">
@@ -527,10 +561,13 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
                 {!availabilityLoading &&
                   !availabilityError &&
                   availability?.durationMode === null && (
-                    <p className="mt-5 border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900">
-                      This booking is not available yet. The organizer has not
-                      finished configuring booking times.
-                    </p>
+                    <div className="mt-5 flex items-start gap-2 border-l-2 border-amber-300 bg-amber-50 px-3 py-2">
+                      <Badge variant="warning">Unavailable</Badge>
+                      <p className="text-sm leading-6 text-amber-900">
+                        This booking is not available yet. The organizer has
+                        not finished configuring booking times.
+                      </p>
+                    </div>
                   )}
                 {!availabilityLoading &&
                   !availabilityError &&
@@ -593,19 +630,22 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
                             Ends at {formatTime(flexibleSelection.slot.endAt, availability.timezone)}
                           </span>
                           <span
-                            className={
-                              availabilityCheck === "available"
-                                ? "font-medium text-emerald-700"
-                                : availabilityCheck === "unavailable"
-                                  ? "font-medium text-rose-700"
-                                  : "text-slate-500"
-                            }
                             role="status"
                             aria-live="polite"
                           >
-                            {availabilityCheck === "checking"
-                              ? "Checking availability..."
-                              : availabilityCheckMessage || "Not checked"}
+                            <Badge
+                              variant={
+                                availabilityCheck === "available"
+                                  ? "success"
+                                  : availabilityCheck === "unavailable"
+                                    ? "error"
+                                    : "neutral"
+                              }
+                            >
+                              {availabilityCheck === "checking"
+                                ? "Checking"
+                                : availabilityCheckMessage || "Not checked"}
+                            </Badge>
                           </span>
                         </div>
                       )}
@@ -620,9 +660,12 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
                   !availabilityError &&
                   availability?.durationMode === "FIXED" &&
                   fixedSlots.length === 0 && (
-                    <p className="mt-5 text-sm text-slate-500">
-                      No available times for this date. Try another date.
-                    </p>
+                    <div className="mt-5 flex items-center gap-2">
+                      <Badge variant="warning">Unavailable</Badge>
+                      <p className="text-sm text-slate-500">
+                        No available times for this date. Try another date.
+                      </p>
+                    </div>
                   )}
                 {!availabilityLoading &&
                   fixedSlots.length > 0 &&
@@ -716,9 +759,9 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
             />
           )}
         </section>
-        <aside className="h-fit rounded-[8px] border border-slate-200 bg-white p-5">
+        <aside className="h-fit rounded-[8px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 lg:sticky lg:top-6">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Your booking
+            Booking summary
           </p>
           <p className="mt-3 text-sm font-semibold text-slate-950">
             {bookable.name}
@@ -737,11 +780,18 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
               }
             />
             <SummaryRow label="Quantity" value={quantity} />
-            <SummaryRow
-              label="Total"
-              value={formatMoneyMinorUnits(total, bookable.currency)}
-            />
+            <div className="border-t border-slate-200 pt-3">
+              <SummaryRow
+                label="Total"
+                value={formatMoneyMinorUnits(total, bookable.currency)}
+              />
+            </div>
           </dl>
+          <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+            {bookable.confirmationPolicy === "REQUIRES_APPROVAL"
+              ? "Your request will be sent for approval."
+              : "Your reservation will be confirmed after submission."}
+          </p>
         </aside>
       </div>
     </PublicShell>
@@ -871,14 +921,19 @@ function ReviewStep({
         />
       </dl>
       {paid && (
-        <p className="mt-5 border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900">
-          Payment is not available yet. No paid reservation will be confirmed.
-        </p>
+        <div className="mt-5 flex items-start gap-2 border-l-2 border-amber-300 bg-amber-50 px-3 py-2">
+          <Badge variant="warning">Payment required</Badge>
+          <p className="text-sm leading-6 text-amber-900">
+            Payment is not available yet. No paid reservation will be
+            confirmed.
+          </p>
+        </div>
       )}
       {error && (
-        <p className="mt-5 text-sm text-rose-700" role="alert">
-          {error}
-        </p>
+        <div className="mt-5 flex items-start gap-2" role="alert">
+          <Badge variant="error">Unable to complete</Badge>
+          <p className="text-sm leading-5 text-rose-700">{error}</p>
+        </div>
       )}
       <div className="mt-6 flex flex-wrap justify-between gap-3">
         <Button type="button" variant="secondary" onClick={onBack}>
@@ -1024,8 +1079,16 @@ function formatTime(value: string, timezone: string) {
 function formatTimeRange(slot: PublicAvailabilitySlot, timezone: string) {
   return `${formatTime(slot.startAt, timezone)} – ${formatTime(slot.endAt, timezone)}`;
 }
-function formatMoney(amount: number, currency: string) {
-  return formatMoneyMinorUnits(amount, currency);
+function formatMoney(amount: number, currency: string | null) {
+  return formatConfiguredMoney(amount, currency);
+}
+
+function formatConfiguredMoney(
+  amount: number | null,
+  currency: string | null,
+) {
+  if (!currency) return "Price unavailable";
+  return formatMoneyMinorUnits(amount, currency.trim().toUpperCase());
 }
 function describeDuration(rule: PublicBookable["reservationRule"] | undefined) {
   if (!rule) return null;

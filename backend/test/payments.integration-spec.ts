@@ -112,6 +112,14 @@ describe("Payments (integration)", () => {
         status: "PENDING",
       }),
     );
+    const checkoutUrl = new URL(first.body.checkoutUrl);
+    expect(checkoutUrl.origin).toBe("http://localhost:3000");
+    expect(checkoutUrl.pathname).toBe("/fake-checkout");
+    expect(checkoutUrl.searchParams.get("providerReference")).toBe(
+      first.body.providerReference,
+    );
+    expect(checkoutUrl.searchParams.get("amount")).toBe("1250");
+    expect(checkoutUrl.searchParams.get("currency")).toBe("USD");
     const second = await initialize(customer, fixture.reservationId);
     expect(second.body.paymentId).toBe(first.body.paymentId);
     expect(second.body.providerReference).toBe(first.body.providerReference);
@@ -258,6 +266,83 @@ describe("Payments (integration)", () => {
         })
       ).status,
     ).toBe(ReservationStatus.PENDING);
+
+    const approved = await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${fixture.reservationId}/approve`,
+      )
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201);
+    expect(approved.body.status).toBe(ReservationStatus.CONFIRMED);
+  });
+
+  it("confirms an approval-required paid reservation when approval happens before payment", async () => {
+    const fixture = await createFixture(
+      2000,
+      "NGN",
+      customer,
+      1,
+      undefined,
+      ConfirmationPolicy.REQUIRES_APPROVAL,
+    );
+    const initialized = await initialize(customer, fixture.reservationId);
+
+    const approved = await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${fixture.reservationId}/approve`,
+      )
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(201);
+    expect(approved.body.status).toBe(ReservationStatus.PENDING);
+
+    const paid = await webhook(initialized.body.providerReference, 2000, "NGN");
+    expect(paid.body).toEqual(
+      expect.objectContaining({
+        status: PaymentStatus.SUCCEEDED,
+        reservationStatus: ReservationStatus.CONFIRMED,
+      }),
+    );
+    expect(
+      (
+        await prisma.reservation.findUniqueOrThrow({
+          where: { id: fixture.reservationId },
+        })
+      ).status,
+    ).toBe(ReservationStatus.CONFIRMED);
+  });
+
+  it("does not resurrect a rejected approval-required reservation after payment succeeds", async () => {
+    const fixture = await createFixture(
+      2000,
+      "NGN",
+      customer,
+      1,
+      undefined,
+      ConfirmationPolicy.REQUIRES_APPROVAL,
+    );
+    const initialized = await initialize(customer, fixture.reservationId);
+
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/organizations/${organizationId}/reservations/${fixture.reservationId}/reject`,
+      )
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(200);
+
+    await webhook(
+      initialized.body.providerReference,
+      2000,
+      "NGN",
+      "SUCCEEDED",
+      409,
+    );
+    expect(
+      (
+        await prisma.reservation.findUniqueOrThrow({
+          where: { id: fixture.reservationId },
+        })
+      ).status,
+    ).toBe(ReservationStatus.REJECTED);
   });
 
   it("makes duplicate FAILED webhooks idempotent", async () => {
@@ -406,10 +491,11 @@ describe("Payments (integration)", () => {
         name: `Payment Bookable ${Date.now()}`,
         slug: `payment-bookable-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         status: BookableStatus.PUBLISHED,
+        pricingType: price > 0 ? "PAID" : "FREE",
         confirmationPolicy,
         capacity: 10,
-        price,
-        currency,
+        price: price > 0 ? price : null,
+        currency: price > 0 ? currency : null,
         reservationRule: {
           create: {
             durationMode: DurationMode.FLEXIBLE,

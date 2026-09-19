@@ -3,13 +3,19 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { BookableStatus, Prisma } from "@prisma/client";
+import {
+  BookableStatus,
+  ConfirmationPolicy,
+  Prisma,
+  PricingType,
+} from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { OrganizationAuthorizationService } from "../organizations/organization-authorization.service";
 import { CreateBookableDto } from "./dto/create-bookable.dto";
 import { ListBookablesDto } from "./dto/list-bookables.dto";
 import { UpdateBookableDto } from "./dto/update-bookable.dto";
 import { ReservationRuleDto } from "./dto/reservation-rule.dto";
+import { validatePricing } from "./pricing";
 
 const bookableSelect = {
   id: true,
@@ -18,7 +24,11 @@ const bookableSelect = {
   description: true,
   slug: true,
   status: true,
+  pricingType: true,
+  confirmationPolicy: true,
   capacity: true,
+  price: true,
+  currency: true,
   createdAt: true,
   updatedAt: true,
   reservationRule: true,
@@ -38,6 +48,7 @@ export class BookablesService {
     );
 
     const baseSlug = input.slug ?? slugify(input.name);
+    validatePricing(input.pricingType, input.price, input.currency);
     validateReservationRule(input.reservationRule);
     if (input.status === BookableStatus.PUBLISHED && !input.reservationRule) {
       throw new ConflictException(
@@ -54,7 +65,13 @@ export class BookablesService {
             description: input.description,
             slug: attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`,
             status: input.status ?? BookableStatus.DRAFT,
+            pricingType: input.pricingType,
+            confirmationPolicy:
+              input.confirmationPolicy ?? ConfirmationPolicy.AUTOMATIC,
             capacity: input.capacity,
+            price: input.pricingType === PricingType.FREE ? null : input.price,
+            currency:
+              input.pricingType === PricingType.FREE ? null : input.currency,
             ...(input.reservationRule
               ? {
                   reservationRule: {
@@ -117,6 +134,34 @@ export class BookablesService {
       userId,
       bookable.organizationId,
     );
+    if (
+      input.pricingType === undefined &&
+      (input.price !== undefined || input.currency !== undefined)
+    ) {
+      throw new ConflictException(
+        "pricingType is required when updating pricing",
+      );
+    }
+    const pricingType = input.pricingType ?? bookable.pricingType;
+    const price =
+      input.price === undefined
+        ? pricingType === PricingType.FREE
+          ? null
+          : bookable.price
+        : input.price;
+    const currency =
+      input.currency === undefined
+        ? pricingType === PricingType.FREE
+          ? null
+          : bookable.currency
+        : input.currency;
+    if (
+      input.pricingType !== undefined ||
+      input.price !== undefined ||
+      input.currency !== undefined
+    ) {
+      validatePricing(pricingType, price, currency);
+    }
     validateReservationRule(input.reservationRule);
     if (
       input.status === BookableStatus.PUBLISHED &&
@@ -138,7 +183,18 @@ export class BookablesService {
             : { description: input.description }),
           ...(input.slug === undefined ? {} : { slug: input.slug }),
           ...(input.status === undefined ? {} : { status: input.status }),
+          ...(input.pricingType === undefined
+            ? {}
+            : { pricingType: input.pricingType }),
+          ...(input.confirmationPolicy === undefined
+            ? {}
+            : { confirmationPolicy: input.confirmationPolicy }),
           ...(input.capacity === undefined ? {} : { capacity: input.capacity }),
+          ...(input.pricingType === undefined &&
+          input.price === undefined &&
+          input.currency === undefined
+            ? {}
+            : { price, currency }),
           ...(input.reservationRule
             ? {
                 reservationRule: {
@@ -167,6 +223,24 @@ export class BookablesService {
     return this.prisma.bookable.update({
       where: { id: bookableId },
       data: { status: BookableStatus.ARCHIVED },
+      select: bookableSelect,
+    });
+  }
+
+  async restore(userId: string, bookableId: string) {
+    const bookable = await this.findBookable(bookableId);
+    await this.organizationAuthorization.requireOwner(
+      userId,
+      bookable.organizationId,
+    );
+
+    if (bookable.status !== BookableStatus.ARCHIVED) {
+      throw new ConflictException("Only archived Bookables can be restored");
+    }
+
+    return this.prisma.bookable.update({
+      where: { id: bookableId },
+      data: { status: BookableStatus.DRAFT },
       select: bookableSelect,
     });
   }

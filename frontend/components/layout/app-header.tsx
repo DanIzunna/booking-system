@@ -130,7 +130,9 @@ export function AppHeader() {
               <span className="grid size-7 place-items-center rounded-full bg-zinc-100 text-zinc-700">
                 <UserRound className="size-4" />
               </span>
-              <span className="hidden lg:inline">{user?.name ?? "Profile"}</span>
+              <span className="hidden lg:inline">
+                {user?.name ?? "Profile"}
+              </span>
               <ChevronDown className="size-3.5 text-zinc-500" />
             </button>
             {profileOpen && (
@@ -139,7 +141,9 @@ export function AppHeader() {
                   <div className="text-sm font-semibold text-zinc-900">
                     {user?.name ?? "Account"}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-500">{user?.email ?? ""}</div>
+                  <div className="mt-1 text-xs text-zinc-500">
+                    {user?.email ?? ""}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -232,7 +236,9 @@ export function AppHeader() {
                 <div className="text-sm font-semibold text-zinc-900">
                   {user?.name ?? "Account"}
                 </div>
-                <div className="mt-1 text-xs text-zinc-500">{user?.email ?? ""}</div>
+                <div className="mt-1 text-xs text-zinc-500">
+                  {user?.email ?? ""}
+                </div>
               </div>
               <button
                 type="button"
@@ -259,9 +265,12 @@ export function AppHeader() {
       {logoutConfirmOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/30 p-4">
           <div className="w-full max-w-md rounded-[12px] border border-zinc-200 bg-white p-5 shadow-xl shadow-zinc-200/80">
-            <p className="text-base font-semibold text-zinc-900">Log out of Bookable?</p>
+            <p className="text-base font-semibold text-zinc-900">
+              Log out of Bookable?
+            </p>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Signing out will end your current session. You can sign back in at any time.
+              Signing out will end your current session. You can sign back in at
+              any time.
             </p>
             <div className="mt-5 flex justify-end gap-3">
               <button

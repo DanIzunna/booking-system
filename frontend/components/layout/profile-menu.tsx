@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ChevronDown,
-  LogOut,
-  Settings,
-  UserRound,
-  X,
-} from "lucide-react";
+import { ChevronDown, LogOut, Settings, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import type { AuthenticatedUser } from "../../types/auth";
 
@@ -16,7 +10,11 @@ interface ProfileMenuProps {
   mobile?: boolean;
 }
 
-export function ProfileMenu({ user, logout, mobile = false }: ProfileMenuProps) {
+export function ProfileMenu({
+  user,
+  logout,
+  mobile = false,
+}: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
@@ -107,7 +105,10 @@ export function ProfileMenu({ user, logout, mobile = false }: ProfileMenuProps) 
             >
               <X className="size-4" />
             </button>
-            <p id="logout-dialog-title" className="pr-8 text-base font-semibold text-slate-900">
+            <p
+              id="logout-dialog-title"
+              className="pr-8 text-base font-semibold text-slate-900"
+            >
               Log out of Bookable?
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-600">

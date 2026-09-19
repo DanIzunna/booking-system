@@ -39,7 +39,10 @@ export function ProductPreview() {
             <span className="h-2 rounded-full bg-slate-950" />
           </div>
           <div className="mt-5 flex items-center gap-3 rounded-[6px] border border-slate-200 bg-white px-3 py-3 text-sm">
-            <CalendarDays className="size-4 text-slate-500" aria-hidden="true" />
+            <CalendarDays
+              className="size-4 text-slate-500"
+              aria-hidden="true"
+            />
             <span className="font-medium text-slate-800">09:00 – 17:00</span>
             <span className="ml-auto text-xs text-slate-500">Africa/Lagos</span>
           </div>
@@ -56,7 +59,7 @@ export function ProductPreview() {
             <Globe2 className="size-4 text-slate-500" aria-hidden="true" />
             <span className="text-xs text-slate-500">Public link</span>
             <strong className="ml-auto truncate text-xs font-medium text-slate-950">
-              /book/consultation-session
+              /book/demo-workspace/consultation-session
             </strong>
           </div>
           <Separator />

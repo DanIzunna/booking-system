@@ -1,8 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Trash2 } from "lucide-react";
-import { FormEvent, type MouseEvent, use, useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Clock3,
+  PencilLine,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import {
+  FormEvent,
+  type MouseEvent,
+  use,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../../../../../lib/api/client";
 import {
@@ -55,6 +69,8 @@ const weekdays = [
   "Saturday",
 ];
 
+const shortWeekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export default function AvailabilityPage({ params }: AvailabilityPageProps) {
   const { organizationId, bookableId } = use(params);
   const router = useRouter();
@@ -95,8 +111,49 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
     id: string;
     label: string;
   } | null>(null);
+  const [showWeeklyForm, setShowWeeklyForm] = useState(false);
+  const [showSpecificForm, setShowSpecificForm] = useState(false);
+  const [showExceptionForm, setShowExceptionForm] = useState(false);
   const loading = status === "authenticated" && !loaded;
   const canManage = role === "OWNER";
+
+  const recurringSchedule = useMemo(() => {
+    const weekdayMap = new Map<number, Set<string>>();
+
+    for (const window of windows) {
+      if (
+        window.type !== "RECURRING" ||
+        window.weekday === null ||
+        !window.startTime ||
+        !window.endTime
+      ) {
+        continue;
+      }
+
+      const key = `${formatLocalTime(window.startTime)} – ${formatLocalTime(window.endTime)}`;
+      const existing = weekdayMap.get(window.weekday) ?? new Set<string>();
+      existing.add(key);
+      weekdayMap.set(window.weekday, existing);
+    }
+
+    const byTimeMap = new Map<string, number[]>();
+    for (const [weekdayIndex, timeSet] of Array.from(weekdayMap.entries()).sort(
+      ([a], [b]) => a - b,
+    )) {
+      const timeRanges = Array.from(timeSet);
+      const groupKey = timeRanges.join("||");
+      const current = byTimeMap.get(groupKey) ?? [];
+      current.push(weekdayIndex);
+      byTimeMap.set(groupKey, current);
+    }
+
+    return Array.from(byTimeMap.entries()).map(
+      ([groupKey, weekdayIndexes]) => ({
+        dayLabel: formatDayRangeGroup(weekdayIndexes),
+        timeRanges: groupKey.split("||"),
+      }),
+    );
+  }, [windows]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -207,7 +264,10 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                 }
               : {
                   type: requestedType,
-                  startAt: localDateTimeToIso(startLocal, organization.timezone),
+                  startAt: localDateTimeToIso(
+                    startLocal,
+                    organization.timezone,
+                  ),
                   endAt: localDateTimeToIso(endLocal, organization.timezone),
                 },
           ),
@@ -366,9 +426,8 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
               </div>
             </div>
             <p className="mt-6 max-w-2xl text-sm leading-6 text-slate-600">
-              Set the times this resource can be reserved. Recurring times
-              follow the organization timezone; specific dates and exceptions
-              are converted before they reach the backend.
+              Set when this resource can be booked. Times are shown in your
+              workspace timezone.
             </p>
             {mutationError && (
               <p
@@ -381,9 +440,13 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
             {deleteTarget && (
               <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
                 <p className="text-sm font-semibold text-rose-900">
-                  Remove {deleteTarget.kind === "window" ? "time window" : "exception"}?
+                  Remove{" "}
+                  {deleteTarget.kind === "window" ? "time window" : "exception"}
+                  ?
                 </p>
-                <p className="mt-2 text-sm text-rose-700">{deleteTarget.label}</p>
+                <p className="mt-2 text-sm text-rose-700">
+                  {deleteTarget.label}
+                </p>
                 <p className="mt-2 text-sm text-rose-700">
                   This time window will no longer be available for reservations.
                 </p>
@@ -410,59 +473,73 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
             <section className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
               <div className="space-y-6">
                 <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
-                    Recurring availability
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold">Weekly hours</h2>
-                  {windows.filter((item) => item.type === "RECURRING")
-                    .length === 0 && (
-                    <p className="mt-5 text-sm text-slate-500">
-                      No weekly hours configured.
-                    </p>
-                  )}
-                  <div className="mt-5 space-y-2">
-                    {windows
-                      .filter((item) => item.type === "RECURRING")
-                      .map((item) => (
-                        <div
-                          className="flex items-center justify-between gap-4 border-b border-slate-100 py-3"
-                          key={item.id}
-                        >
-                          <span className="text-sm font-medium">
-                            {weekdays[item.weekday ?? 0]}
-                          </span>
-                          <span className="text-sm text-slate-600">
-                            {formatLocalTime(item.startTime)} –{" "}
-                            {formatLocalTime(item.endTime)}
-                          </span>
-                          {canManage && (
-                            <button
-                              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
-                              disabled={Boolean(pendingAction)}
-                              aria-label={`Remove ${weekdays[item.weekday ?? 0]} availability`}
-                              title="Remove availability"
-                              onClick={() =>
-                                setDeleteTarget({
-                                  kind: "window",
-                                  id: item.id,
-                                  label: `${weekdays[item.weekday ?? 0]} · ${formatLocalTime(item.startTime)}–${formatLocalTime(item.endTime)}`,
-                                })
-                              }
-                            >
-                              <Trash2 className="size-4" aria-hidden="true" />
-                              <span className="hidden sm:inline">Remove</span>
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays
+                        className="size-4 text-slate-600"
+                        aria-hidden="true"
+                      />
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                        Weekly schedule
+                      </p>
+                    </div>
+                    {canManage && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                        onClick={() => setShowWeeklyForm((current) => !current)}
+                      >
+                        {showWeeklyForm ? (
+                          <>
+                            <PencilLine
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
+                            Close
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="size-3.5" aria-hidden="true" />
+                            {windows.some((item) => item.type === "RECURRING")
+                              ? "Edit schedule"
+                              : "Add hours"}
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
-                  {canManage && (
+
+                  <div className="mt-4 space-y-3">
+                    {recurringSchedule.length === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        No weekly hours configured.
+                      </p>
+                    ) : (
+                      recurringSchedule.map(({ dayLabel, timeRanges }) => (
+                        <div
+                          key={`${dayLabel}-${timeRanges.join("|")}`}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                        >
+                          <p className="text-sm font-semibold text-slate-900">
+                            {dayLabel}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {timeRanges.join(", ")}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {canManage && showWeeklyForm && (
                     <form
                       className="mt-6 grid gap-4 border-t border-slate-100 pt-5"
                       onSubmit={handleCreateWindow}
                     >
                       <div className="space-y-3">
-                        <p className="text-sm font-semibold text-slate-700">Days</p>
+                        <p className="text-sm font-semibold text-slate-700">
+                          Select days
+                        </p>
                         <div className="flex flex-wrap gap-2">
                           {weekdays.map((day, index) => (
                             <button
@@ -515,72 +592,105 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                         </label>
                       </div>
 
-                      <button
-                        className={styles.primaryButton}
-                        type="submit"
-                        disabled={Boolean(pendingAction) || selectedWeekdays.length === 0}
-                      >
-                        {pendingAction === "create-window"
-                          ? "Adding..."
-                          : "Apply to selected days"}
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className={styles.primaryButton}
+                          type="submit"
+                          disabled={
+                            Boolean(pendingAction) ||
+                            selectedWeekdays.length === 0
+                          }
+                        >
+                          {pendingAction === "create-window"
+                            ? "Adding..."
+                            : "Apply to selected days"}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setShowWeeklyForm(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </form>
                   )}
                 </section>
                 <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
-                    Specific availability
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                        Specific availability
+                      </p>
+                      <h2 className="mt-2 text-xl font-semibold">
+                        One-time windows
+                      </h2>
+                    </div>
+                    {canManage && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                        onClick={() =>
+                          setShowSpecificForm((current) => !current)
+                        }
+                      >
+                        <Plus className="size-3.5" aria-hidden="true" />
+                        {showSpecificForm ? "Close" : "Add specific window"}
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Add bookable hours for a specific date without changing the
+                    weekly schedule.
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold">
-                    One-time windows
-                  </h2>
                   <div className="mt-5 space-y-2">
-                    {windows
-                      .filter((item) => item.type === "SPECIFIC")
-                      .map((item) => (
-                        <div
-                          className="flex items-center justify-between gap-4 border-b border-slate-100 py-3"
-                          key={item.id}
-                        >
-                          <span className="text-sm text-slate-700">
-                            {formatZonedDateTime(
-                              item.startAt ?? "",
-                              organization.timezone,
-                            )}{" "}
-                            –{" "}
-                            {formatZonedDateTime(
-                              item.endAt ?? "",
-                              organization.timezone,
-                            )}
-                          </span>
-                          {canManage && (
-                            <button
-                              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
-                              disabled={Boolean(pendingAction)}
-                              aria-label="Remove specific availability"
-                              title="Remove availability"
-                              onClick={() =>
-                                setDeleteTarget({
-                                  kind: "window",
-                                  id: item.id,
-                                  label: `${formatZonedDateTime(item.startAt ?? "", organization.timezone)} – ${formatZonedDateTime(item.endAt ?? "", organization.timezone)}`,
-                                })
-                              }
-                            >
-                              <Trash2 className="size-4" aria-hidden="true" />
-                              <span className="hidden sm:inline">Remove</span>
-                            </button>
-                          )}
-                        </div>
-                      ))}
                     {windows.filter((item) => item.type === "SPECIFIC")
-                      .length === 0 && (
+                      .length === 0 ? (
                       <p className="text-sm text-slate-500">
                         No specific windows configured.
                       </p>
+                    ) : (
+                      windows
+                        .filter((item) => item.type === "SPECIFIC")
+                        .map((item) => (
+                          <div
+                            className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                            key={item.id}
+                          >
+                            <span className="text-sm text-slate-700">
+                              {formatZonedDateTime(
+                                item.startAt ?? "",
+                                organization.timezone,
+                              )}{" "}
+                              –{" "}
+                              {formatZonedDateTime(
+                                item.endAt ?? "",
+                                organization.timezone,
+                              )}
+                            </span>
+                            {canManage && (
+                              <button
+                                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
+                                disabled={Boolean(pendingAction)}
+                                aria-label="Remove specific availability"
+                                title="Remove availability"
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    kind: "window",
+                                    id: item.id,
+                                    label: `${formatZonedDateTime(item.startAt ?? "", organization.timezone)} – ${formatZonedDateTime(item.endAt ?? "", organization.timezone)}`,
+                                  })
+                                }
+                              >
+                                <Trash2 className="size-4" aria-hidden="true" />
+                                <span className="hidden sm:inline">Remove</span>
+                              </button>
+                            )}
+                          </div>
+                        ))
                     )}
                   </div>
-                  {canManage && (
+                  {canManage && showSpecificForm && (
                     <form
                       className="mt-6 grid gap-4 border-t border-slate-100 pt-5"
                       onSubmit={handleCreateWindow}
@@ -624,83 +734,114 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                           />
                         </label>
                       </div>
-                      <button
-                        className={styles.primaryButton}
-                        type="submit"
-                        disabled={Boolean(pendingAction)}
-                        onClick={() => setWindowType("SPECIFIC")}
-                      >
-                        {pendingAction === "create-window"
-                          ? "Adding..."
-                          : "Add specific window"}
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className={styles.primaryButton}
+                          type="submit"
+                          disabled={Boolean(pendingAction)}
+                          onClick={() => setWindowType("SPECIFIC")}
+                        >
+                          {pendingAction === "create-window"
+                            ? "Adding..."
+                            : "Add specific window"}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setShowSpecificForm(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </form>
                   )}
                 </section>
               </div>
               <div className="space-y-6">
                 <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
-                    Exceptions
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold">
-                    Blocks and overrides
-                  </h2>
-                  <div className="mt-5 space-y-2">
-                    {exceptions.map((item) => (
-                      <div
-                        className="flex items-start justify-between gap-4 border-b border-slate-100 py-3"
-                        key={item.id}
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                        Exceptions
+                      </p>
+                      <h2 className="mt-2 text-xl font-semibold">
+                        Overrides and block times
+                      </h2>
+                    </div>
+                    {canManage && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                        onClick={() =>
+                          setShowExceptionForm((current) => !current)
+                        }
                       >
-                        <span>
-                          <strong className="block text-xs uppercase tracking-wider text-slate-700">
-                            {item.type}
-                          </strong>
-                          <small className="mt-1 block text-sm text-slate-500">
-                            {formatZonedDateTime(
-                              item.startAt,
-                              organization.timezone,
-                            )}{" "}
-                            –{" "}
-                            {formatZonedDateTime(
-                              item.endAt,
-                              organization.timezone,
-                            )}
-                          </small>
-                        </span>
-                        {canManage && (
-                          <button
-                            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
-                            disabled={Boolean(pendingAction)}
-                            aria-label="Remove availability exception"
-                            title="Remove exception"
-                            onClick={() =>
-                              setDeleteTarget({
-                                kind: "exception",
-                                id: item.id,
-                                label: `${item.type} · ${formatZonedDateTime(item.startAt, organization.timezone)} – ${formatZonedDateTime(item.endAt, organization.timezone)}`,
-                              })
-                            }
-                          >
-                            <Trash2 className="size-4" aria-hidden="true" />
-                            <span className="hidden sm:inline">Remove</span>
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {exceptions.length === 0 && (
+                        <Plus className="size-3.5" aria-hidden="true" />
+                        {showExceptionForm ? "Close" : "Add exception"}
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Override the weekly schedule for specific dates.
+                  </p>
+                  <div className="mt-5 space-y-2">
+                    {exceptions.length === 0 ? (
                       <p className="text-sm text-slate-500">
                         No exceptions configured.
                       </p>
+                    ) : (
+                      exceptions.map((item) => (
+                        <div
+                          className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                          key={item.id}
+                        >
+                          <span>
+                            <strong className="block text-sm font-semibold text-slate-900">
+                              {item.type === "BLOCK"
+                                ? "Blocked"
+                                : "Override hours"}
+                            </strong>
+                            <small className="mt-1 block text-sm text-slate-600">
+                              {formatZonedDateTime(
+                                item.startAt,
+                                organization.timezone,
+                              )}{" "}
+                              –{" "}
+                              {formatZonedDateTime(
+                                item.endAt,
+                                organization.timezone,
+                              )}
+                            </small>
+                          </span>
+                          {canManage && (
+                            <button
+                              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-[6px] text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:min-h-10 sm:min-w-0 sm:px-2"
+                              disabled={Boolean(pendingAction)}
+                              aria-label="Remove availability exception"
+                              title="Remove exception"
+                              onClick={() =>
+                                setDeleteTarget({
+                                  kind: "exception",
+                                  id: item.id,
+                                  label: `${item.type === "BLOCK" ? "Blocked" : "Override hours"} · ${formatZonedDateTime(item.startAt, organization.timezone)} – ${formatZonedDateTime(item.endAt, organization.timezone)}`,
+                                })
+                              }
+                            >
+                              <Trash2 className="size-4" aria-hidden="true" />
+                              <span className="hidden sm:inline">Remove</span>
+                            </button>
+                          )}
+                        </div>
+                      ))
                     )}
                   </div>
-                  {canManage && (
+                  {canManage && showExceptionForm && (
                     <form
                       className="mt-6 grid gap-4 border-t border-slate-100 pt-5"
                       onSubmit={handleCreateException}
                     >
                       <label className="space-y-2 text-sm font-semibold text-slate-700">
-                        Type
+                        Exception type
                         <select
                           className={styles.friendlyInput}
                           value={exceptionType}
@@ -711,9 +852,7 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                           }
                         >
                           <option value="BLOCK">Block time</option>
-                          <option value="OVERRIDE">
-                            Override availability
-                          </option>
+                          <option value="OVERRIDE">Override hours</option>
                         </select>
                       </label>
                       <div className="grid gap-4 sm:grid-cols-2">
@@ -748,26 +887,40 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
                           />
                         </label>
                       </div>
-                      <button
-                        className={styles.primaryButton}
-                        type="submit"
-                        disabled={Boolean(pendingAction)}
-                      >
-                        {pendingAction === "create-exception"
-                          ? "Adding..."
-                          : "Add exception"}
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className={styles.primaryButton}
+                          type="submit"
+                          disabled={Boolean(pendingAction)}
+                        >
+                          {pendingAction === "create-exception"
+                            ? "Adding..."
+                            : "Add exception"}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setShowExceptionForm(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </form>
                   )}
                 </section>
-                <section className="rounded-xl border border-slate-200 bg-slate-white bg-white p-5 shadow-sm">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
-                    Check availability
-                  </p>
+                <section className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Clock3
+                      className="size-4 text-slate-600"
+                      aria-hidden="true"
+                    />
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+                      Check availability
+                    </p>
+                  </div>
                   <h2 className="mt-2 text-xl font-semibold">Test a time</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    The backend evaluates your windows and exceptions in the
-                    workspace timezone.
+                    Test whether a specific date and time can be booked.
                   </p>
                   <form className="mt-5 grid gap-4">
                     <label className="space-y-2 text-sm font-semibold text-slate-700">
@@ -841,6 +994,39 @@ export default function AvailabilityPage({ params }: AvailabilityPageProps) {
       </main>
     </PageContainer>
   );
+}
+
+function formatDayRangeGroup(weekdayIndexes: number[]) {
+  if (weekdayIndexes.length === 0) return "";
+
+  const ranges: Array<{ start: number; end: number }> = [];
+  let rangeStart = weekdayIndexes[0];
+  let previous = weekdayIndexes[0];
+
+  for (let index = 1; index < weekdayIndexes.length; index += 1) {
+    const current = weekdayIndexes[index];
+    if (current === previous + 1) {
+      previous = current;
+      continue;
+    }
+
+    ranges.push({ start: rangeStart, end: previous });
+    rangeStart = current;
+    previous = current;
+  }
+
+  ranges.push({ start: rangeStart, end: previous });
+
+  return ranges
+    .map(({ start, end }) => {
+      const startLabel = shortWeekdays[start] ?? `Day ${start}`;
+      const endLabel = shortWeekdays[end] ?? `Day ${end}`;
+      if (start === end) {
+        return weekdays[start] ?? `Day ${start}`;
+      }
+      return `${startLabel}–${endLabel}`;
+    })
+    .join(", ");
 }
 
 function validLocalInterval(start: string, end: string) {

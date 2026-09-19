@@ -324,6 +324,7 @@ describe("Availability engine (integration)", () => {
         name: slug,
         slug: `${slug}-${Date.now()}`,
         capacity: 1,
+        pricingType: "FREE",
       })
       .expect(201);
     bookableIds.push(response.body.id);

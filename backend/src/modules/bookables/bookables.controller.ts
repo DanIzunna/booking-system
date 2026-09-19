@@ -91,4 +91,18 @@ export class BookablesController {
   ) {
     return this.bookables.archive(request.user.id, bookableId);
   }
+
+  @Post(":bookableId/restore")
+  @ApiOperation({
+    summary: "Restore an archived Bookable to DRAFT (OWNER only)",
+  })
+  @ApiParam({ name: "bookableId", format: "uuid" })
+  @ApiResponse({ status: 201, description: "Bookable restored to DRAFT" })
+  @ApiResponse({ status: 403, description: "OWNER membership required" })
+  restore(
+    @Req() request: AuthenticatedRequest,
+    @Param("bookableId") bookableId: string,
+  ) {
+    return this.bookables.restore(request.user.id, bookableId);
+  }
 }

@@ -14,7 +14,10 @@ test("authenticated workspace, generated slug, publish redirect, and availabilit
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  await page.getByRole("button", { name: /^Create workspace$/i }).first().click();
+  await page
+    .getByRole("button", { name: /^Create workspace$/i })
+    .first()
+    .click();
   await page.getByLabel("Workspace name").fill(organizationName);
   await page.getByLabel("Local timezone").selectOption("Africa/Lagos");
   await page
@@ -49,7 +52,9 @@ test("authenticated workspace, generated slug, publish redirect, and availabilit
   await expect(
     page.getByText("Workspace timezone", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Toggle Monday" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Toggle Monday" }),
+  ).toBeVisible();
   await expect(page.getByLabel("Date")).toHaveCount(2);
   await expect(page.getByLabel("Duration")).toBeVisible();
   await expect(page.locator('input[type="text"]')).toHaveCount(0);
@@ -70,7 +75,10 @@ test("availability supports multi-day selection and apply-to-selected-days flow"
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  await page.getByRole("button", { name: /^Create workspace$/i }).first().click();
+  await page
+    .getByRole("button", { name: /^Create workspace$/i })
+    .first()
+    .click();
   await page.getByLabel("Workspace name").fill(organizationName);
   await page.getByLabel("Local timezone").selectOption("UTC");
   await page
@@ -87,7 +95,9 @@ test("availability supports multi-day selection and apply-to-selected-days flow"
     .first()
     .click();
   await page.getByLabel("Name").fill(bookableName);
-  await page.getByLabel("Description").fill("A room used for multi-day availability checks.");
+  await page
+    .getByLabel("Description")
+    .fill("A room used for multi-day availability checks.");
   await page.getByLabel("Capacity").fill("4");
   await page.getByRole("button", { name: "Create bookable" }).click();
   await expect(page).toHaveURL(/\/bookables\/[^/]+$/);

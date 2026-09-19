@@ -39,6 +39,11 @@ export function AppSidebar({
           href: `/organizations/${organizationId}/bookables`,
           icon: ClipboardList,
         },
+        {
+          label: "Reservations",
+          href: `/organizations/${organizationId}/reservations`,
+          icon: ClipboardList,
+        },
       ]
     : [{ label: "Overview", href: "/dashboard", icon: LayoutDashboard }];
 
@@ -46,7 +51,9 @@ export function AppSidebar({
     <aside
       className={`flex h-full ${collapsed ? "w-16" : "w-[240px]"} shrink-0 flex-col border-r border-slate-200 bg-white px-2 py-4`}
     >
-      <div className={`mb-4 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
+      <div
+        className={`mb-4 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}
+      >
         {!collapsed && (
           <div className="min-w-0 flex-1 px-1">
             <WorkspaceSwitcher
@@ -75,7 +82,8 @@ export function AppSidebar({
         {items.map(({ label, href, icon: Icon }) => {
           const active =
             pathname === href ||
-            (label === "Bookables" && pathname.includes("/bookables"));
+            (label === "Bookables" && pathname.includes("/bookables")) ||
+            (label === "Reservations" && pathname.startsWith(`${href}/`));
 
           return (
             <Link
@@ -88,7 +96,9 @@ export function AppSidebar({
             >
               <Icon className="size-4 shrink-0" />
               {!collapsed && <span className="truncate">{label}</span>}
-              {!collapsed && <ChevronRight className="ml-auto size-3.5 opacity-50" />}
+              {!collapsed && (
+                <ChevronRight className="ml-auto size-3.5 opacity-50" />
+              )}
               {collapsed && <span className="sr-only">{label}</span>}
             </Link>
           );
@@ -97,12 +107,11 @@ export function AppSidebar({
           <>
             {!collapsed && (
               <span className="mt-6 block px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
-                Coming later
+                More soon
               </span>
             )}
             {[
               { label: "Schedule", icon: CalendarDays },
-              { label: "Reservations", icon: ClipboardList },
               { label: "Settings", icon: Settings2 },
             ].map(({ label, icon: Icon }) => (
               <span

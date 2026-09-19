@@ -57,6 +57,7 @@ export interface OrganizationReservation {
   amount: number;
   currency: string;
   status: ReservationStatus;
+  approvedAt?: string | null;
   expiresAt: string | null;
   createdAt: string;
   updatedAt: string;

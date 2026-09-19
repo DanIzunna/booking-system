@@ -23,6 +23,14 @@ export class PublicBookingController {
     return this.publicBooking.getBookable(slug);
   }
 
+  @Get("organizations/:organizationSlug")
+  @ApiOperation({ summary: "Get a public organization catalog" })
+  @ApiParam({ name: "organizationSlug", example: "my-workspace" })
+  @ApiResponse({ status: 404, description: "Public organization not found" })
+  getOrganization(@Param("organizationSlug") organizationSlug: string) {
+    return this.publicBooking.getOrganization(organizationSlug);
+  }
+
   @Get(":slug/availability/check")
   @ApiOperation({
     summary: "Check whether a public interval can currently be booked",
@@ -62,5 +70,58 @@ export class PublicBookingController {
     @Query() query: PublicAvailabilityDto,
   ) {
     return this.publicBooking.getAvailability(slug, query);
+  }
+
+  @Get(":organizationSlug/:bookableSlug")
+  @ApiOperation({ summary: "Get a published Bookable in an organization" })
+  @ApiParam({ name: "organizationSlug", example: "my-workspace" })
+  @ApiParam({ name: "bookableSlug", example: "my-consultation" })
+  @ApiResponse({ status: 404, description: "Published Bookable not found" })
+  getOrganizationBookable(
+    @Param("organizationSlug") organizationSlug: string,
+    @Param("bookableSlug") bookableSlug: string,
+  ) {
+    return this.publicBooking.getBookable(organizationSlug, bookableSlug);
+  }
+
+  @Get(":organizationSlug/:bookableSlug/availability")
+  @ApiOperation({
+    summary: "Get public availability for an organization Bookable",
+  })
+  @ApiParam({ name: "organizationSlug", example: "my-workspace" })
+  @ApiParam({ name: "bookableSlug", example: "my-consultation" })
+  @ApiQuery({ name: "date", required: true, type: String })
+  @ApiQuery({ name: "quantity", required: false, type: Number, example: 1 })
+  getOrganizationAvailability(
+    @Param("organizationSlug") organizationSlug: string,
+    @Param("bookableSlug") bookableSlug: string,
+    @Query() query: PublicAvailabilityDto,
+  ) {
+    return this.publicBooking.getAvailability(
+      organizationSlug,
+      bookableSlug,
+      query,
+    );
+  }
+
+  @Get(":organizationSlug/:bookableSlug/availability/check")
+  @ApiOperation({
+    summary: "Check availability for an organization Bookable",
+  })
+  @ApiParam({ name: "organizationSlug", example: "my-workspace" })
+  @ApiParam({ name: "bookableSlug", example: "my-consultation" })
+  @ApiQuery({ name: "startAt", required: true, type: String })
+  @ApiQuery({ name: "endAt", required: true, type: String })
+  @ApiQuery({ name: "quantity", required: true, type: Number })
+  checkOrganizationAvailability(
+    @Param("organizationSlug") organizationSlug: string,
+    @Param("bookableSlug") bookableSlug: string,
+    @Query() query: PublicAvailabilityCheckDto,
+  ) {
+    return this.publicBooking.checkAvailability(
+      organizationSlug,
+      bookableSlug,
+      query,
+    );
   }
 }

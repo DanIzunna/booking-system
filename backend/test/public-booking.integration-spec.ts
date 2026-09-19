@@ -118,6 +118,7 @@ describe("Public booking (integration)", () => {
         "name",
         "organization",
         "price",
+        "pricingType",
         "reservationRule",
         "slug",
         "status",
@@ -390,6 +391,7 @@ describe("Public booking (integration)", () => {
         description: "Public description",
         slug: `public-bookable-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         status: options.status ?? BookableStatus.PUBLISHED,
+        pricingType: "FREE",
         confirmationPolicy:
           options.confirmationPolicy ?? ConfirmationPolicy.AUTOMATIC,
         capacity: options.capacity ?? 2,

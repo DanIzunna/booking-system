@@ -11,6 +11,7 @@ import {
   DurationMode,
   PaymentStatus,
   Prisma,
+  PricingType,
   ReservationStatus,
 } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -196,6 +197,7 @@ export class ReservationsService {
           id: true,
           capacity: true,
           status: true,
+          pricingType: true,
           confirmationPolicy: true,
         },
       });
@@ -225,9 +227,12 @@ export class ReservationsService {
         throw new ConflictException("Bookable capacity exceeded");
       }
 
-      const reservationAmount = input.quantity * bookable.price;
+      const reservationAmount =
+        bookable.pricingType === PricingType.FREE
+          ? 0
+          : input.quantity * (bookable.price ?? 0);
       const status =
-        reservationAmount === 0 &&
+        bookable.pricingType === PricingType.FREE &&
         lockedBookable.confirmationPolicy === ConfirmationPolicy.AUTOMATIC
           ? ReservationStatus.CONFIRMED
           : ReservationStatus.PENDING;
@@ -240,7 +245,7 @@ export class ReservationsService {
           endAt,
           quantity: input.quantity,
           amount: reservationAmount,
-          currency: bookable.currency,
+          currency: bookable.currency ?? "NGN",
           status,
         },
         select: customerReservationSelect,
@@ -316,6 +321,7 @@ export class ReservationsService {
               id: true,
               status: true,
               capacity: true,
+              pricingType: true,
               confirmationPolicy: true,
             },
           },
@@ -365,6 +371,7 @@ export class ReservationsService {
               id: true,
               status: true,
               capacity: true,
+              pricingType: true,
               confirmationPolicy: true,
             },
           },
@@ -421,7 +428,7 @@ export class ReservationsService {
         where: { id: reservationId },
         data: {
           status:
-            lockedReservation.amount === 0 ||
+            lockedReservation.bookable.pricingType === PricingType.FREE ||
             lockedReservation.payment?.status === PaymentStatus.SUCCEEDED
               ? ReservationStatus.CONFIRMED
               : ReservationStatus.PENDING,
@@ -517,11 +524,13 @@ export class ReservationsService {
           amount: true,
           status: true,
           expiresAt: true,
-          bookable: { select: { confirmationPolicy: true } },
+          bookable: {
+            select: { confirmationPolicy: true, pricingType: true },
+          },
         },
       });
       if (!reservation) throw new NotFoundException("Reservation not found");
-      if (reservation.amount !== 0) {
+      if (reservation.bookable.pricingType !== PricingType.FREE) {
         throw new ConflictException("Reservation requires payment");
       }
       if (reservation.status === ReservationStatus.CONFIRMED) {

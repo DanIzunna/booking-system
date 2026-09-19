@@ -68,7 +68,8 @@ export default function Home() {
               className="inline-flex min-h-11 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-5 text-[13px] font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-50"
               href="#how-it-works"
             >
-              See how it works <ChevronRight className="size-4" aria-hidden="true" />
+              See how it works{" "}
+              <ChevronRight className="size-4" aria-hidden="true" />
             </a>
           </div>
         </div>
@@ -107,7 +108,10 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section id="organizations" className="border-y border-slate-200 bg-white">
+      <section
+        id="organizations"
+        className="border-y border-slate-200 bg-white"
+      >
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-[0.7fr_1.3fr] lg:px-8">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
@@ -138,7 +142,10 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section id="customers" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
+      <section
+        id="customers"
+        className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8"
+      >
         <div className="grid gap-10 md:grid-cols-[0.7fr_1.3fr]">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
@@ -179,7 +186,7 @@ export default function Home() {
             </p>
             <div className="mt-5 flex max-w-xl items-center gap-3 rounded-[6px] border border-slate-200 bg-slate-50 px-3 py-3">
               <code className="min-w-0 flex-1 truncate text-xs text-slate-700">
-                bookable.app/book/consultation-session
+                bookable.app/book/demo-workspace/consultation-session
               </code>
               <button className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50">
                 <Copy className="size-3.5" aria-hidden="true" /> Copy link
@@ -191,10 +198,12 @@ export default function Home() {
               className="inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-zinc-950 px-4 text-[13px] font-medium text-white hover:bg-zinc-800"
               href="/register"
             >
-              Create a Bookable <ArrowRight className="size-4" aria-hidden="true" />
+              Create a Bookable{" "}
+              <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
             <span className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-300 px-4 text-[13px] font-medium text-slate-700">
-              <ExternalLink className="size-4" aria-hidden="true" /> Open booking page
+              <ExternalLink className="size-4" aria-hidden="true" /> Open
+              booking page
             </span>
           </div>
         </div>
@@ -213,7 +222,8 @@ export default function Home() {
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-zinc-950 px-5 text-[13px] font-medium text-white hover:bg-zinc-800"
             href="/register"
           >
-            Create your first Bookable <ArrowRight className="size-4" aria-hidden="true" />
+            Create your first Bookable{" "}
+            <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
         </div>
       </section>
