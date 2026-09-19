@@ -103,7 +103,7 @@ export function AppHeader() {
                       </small>
                     </span>
                     {organization.id === organizationId && (
-                      <Check className="size-4 text-zinc-950" />
+                      <Check className="size-4 text-indigo-600" />
                     )}
                   </button>
                 ))}
@@ -296,5 +296,5 @@ export function AppHeader() {
 }
 
 function navClass(active: boolean) {
-  return `rounded-full px-3 py-2 text-[13px] font-semibold ${active ? "bg-zinc-100 text-zinc-950" : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"}`;
+  return `rounded-full px-3 py-2 text-[13px] font-semibold ${active ? "bg-indigo-50 text-indigo-600" : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"}`;
 }

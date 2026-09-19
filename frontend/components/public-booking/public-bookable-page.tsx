@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -381,6 +382,8 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
               ? "Check the link and try again, or ask the organizer for a current booking link."
               : "Please try again shortly."
           }
+          returnHref={organizationSlug ? `/book/${organizationSlug}` : "/"}
+          returnLabel={organizationSlug ? "Back to catalog" : "Return to Bookable"}
         />
       </BookingExperienceShell>
     );
@@ -427,7 +430,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
 
   return (
     <BookingExperienceShell authenticated={sessionStatus === "authenticated" && !!user}>
-      <header className="rounded-[8px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6">
+      <header className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-6">
         <Link
           className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
           href={`/book/${organizationSlug}`}
@@ -435,7 +438,28 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
           <ArrowLeft className="size-3.5" aria-hidden="true" />
           Back to organization
         </Link>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+
+        <div className="relative overflow-hidden rounded-[14px] border border-slate-200 bg-slate-100">
+          <div className="relative aspect-[16/9] w-full">
+            {bookable.imageUrl ? (
+              <Image
+                src={bookable.imageUrl}
+                alt={bookable.name}
+                fill
+                unoptimized
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%),linear-gradient(135deg,#f8fafc,#e2e8f0)] text-slate-500">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-white/80 shadow-sm">
+                  <CalendarDays className="size-8" aria-hidden="true" />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
           {bookable.organization.name}
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
@@ -1005,55 +1029,81 @@ function ConfirmationState({
   pricingType: PublicBookable["pricingType"];
 }) {
   return (
-    <section className="rounded-[8px] border border-slate-200 bg-white p-6">
-      <Check className="size-6 text-emerald-600" aria-hidden="true" />
-      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+    <section className="mx-auto max-w-3xl rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-8">
+      <div className="flex justify-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+          <Check className="size-8" aria-hidden="true" />
+        </div>
+      </div>
+      <p className="mt-6 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
         Confirmed
       </p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-        Reservation confirmed
+      <h1 className="mt-2 text-center text-3xl font-semibold tracking-tight text-slate-950">
+        Booking confirmed
       </h1>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-3 text-center text-sm leading-6 text-slate-600">
         Your reservation for {confirmation.bookable.name} is confirmed.
       </p>
-      <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
-        <SummaryRow label="Reference" value={confirmation.id} />
-        <SummaryRow
-          label="Workspace"
-          value={confirmation.bookable.organization.name}
-        />
-        <SummaryRow
-          label="When"
-          value={formatZonedDateTime(
-            confirmation.startAt,
-            confirmation.bookable.organization.timezone,
-          )}
-        />
-        <SummaryRow
-          label="Timezone"
-          value={formatTimeZoneName(
-            confirmation.bookable.organization.timezone,
-          )}
-        />
-        <SummaryRow label="Quantity" value={String(confirmation.quantity)} />
-        <SummaryRow
-          label="Total"
-          value={
-            pricingType === "FREE"
-              ? "Free"
-              : formatMoneyMinorUnits(
-                  confirmation.amount,
-                  confirmation.currency,
-                )
-          }
-        />
-      </dl>
-      <Link
-        className="mt-7 inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-zinc-950 px-4 text-[13px] font-medium text-white hover:bg-zinc-800"
-        href={`/reservations/${confirmation.id}`}
-      >
-        View reservation <ArrowRight className="size-4" aria-hidden="true" />
-      </Link>
+
+      <div className="mt-8 rounded-[14px] border border-slate-200 bg-slate-50 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Reservation summary
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-950">
+              {confirmation.bookable.name}
+            </h2>
+          </div>
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+            Confirmed
+          </span>
+        </div>
+
+        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+          <SummaryRow
+            label="Date & time"
+            value={formatZonedDateTime(
+              confirmation.startAt,
+              confirmation.bookable.organization.timezone,
+            )}
+          />
+          <SummaryRow
+            label="Guests"
+            value={String(confirmation.quantity)}
+          />
+          <SummaryRow
+            label="Reservation"
+            value={confirmation.id}
+          />
+          <SummaryRow
+            label="Total"
+            value={
+              pricingType === "FREE"
+                ? "Free"
+                : formatMoneyMinorUnits(
+                    confirmation.amount,
+                    confirmation.currency,
+                  )
+            }
+          />
+        </dl>
+      </div>
+
+      <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <Link
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-zinc-950 px-4 text-[13px] font-medium text-white hover:bg-zinc-800"
+          href={`/reservations/${confirmation.id}`}
+        >
+          View reservation <ArrowRight className="size-4" aria-hidden="true" />
+        </Link>
+        <Link
+          className="inline-flex min-h-11 items-center justify-center rounded-[6px] border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+          href="/"
+        >
+          Return to Bookable
+        </Link>
+      </div>
     </section>
   );
 }
@@ -1103,20 +1153,37 @@ function LoadingState() {
     </div>
   );
 }
-function StatePanel({ title, message }: { title: string; message: string }) {
+function StatePanel({
+  title,
+  message,
+  returnHref,
+  returnLabel,
+}: {
+  title: string;
+  message: string;
+  returnHref: string;
+  returnLabel: string;
+}) {
   return (
-    <section className="rounded-[8px] border border-slate-200 bg-white p-6">
-      <Check className="size-5 text-slate-500" aria-hidden="true" />
-      <h1 className="mt-4 text-xl font-semibold">{title}</h1>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-        {message}
+    <section className="mx-auto max-w-2xl rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-8">
+      <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+        <Check className="size-5" aria-hidden="true" />
+      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        Public booking
       </p>
-      <Link
-        className="mt-6 inline-flex min-h-10 items-center rounded-[6px] border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
-        href="/"
-      >
-        Return to Bookable
-      </Link>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+        {title}
+      </h1>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{message}</p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          className="inline-flex min-h-10 items-center justify-center rounded-[6px] bg-zinc-950 px-4 text-[13px] font-medium text-white hover:bg-zinc-800"
+          href={returnHref}
+        >
+          {returnLabel}
+        </Link>
+      </div>
     </section>
   );
 }

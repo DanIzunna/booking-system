@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError } from "../../../../lib/api/client";
+import { ApiError, getUserFacingError } from "../../../../lib/api/client";
 import { listBookables } from "../../../../lib/api/bookables";
 import {
   approveOrganizationReservation,
@@ -126,9 +126,7 @@ export default function OrganizationReservationsPage({
       } catch (caught) {
         if (!cancelled) {
           setPageError(
-            caught instanceof ApiError
-              ? caught.message
-              : "Unable to load reservations.",
+            getUserFacingError(caught, "Unable to load reservations."),
           );
           setReservations([]);
         }
@@ -167,9 +165,7 @@ export default function OrganizationReservationsPage({
       setReservations(refreshed);
     } catch (caught) {
       setPageError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Unable to approve this reservation.",
+        getUserFacingError(caught, "Unable to approve this reservation."),
       );
     } finally {
       setPendingActionId(null);
@@ -193,9 +189,7 @@ export default function OrganizationReservationsPage({
       setRejectTarget(null);
     } catch (caught) {
       setPageError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Unable to reject this reservation.",
+        getUserFacingError(caught, "Unable to reject this reservation."),
       );
     } finally {
       setPendingActionId(null);

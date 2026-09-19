@@ -157,6 +157,65 @@ function formatMessage(message: unknown): string {
   return String(message);
 }
 
+export function getUserFacingError(
+  error: unknown,
+  fallback: string,
+): string {
+  const rawMessage =
+    error instanceof ApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "";
+
+  if (!rawMessage) return fallback;
+
+  const message = rawMessage.toLowerCase();
+
+  if (
+    message.includes("failed to fetch") ||
+    message.includes("network") ||
+    message.includes("load failed")
+  ) {
+    return "We could not reach the server. Please try again.";
+  }
+
+  if (message.includes("not found")) {
+    return "This item could not be found.";
+  }
+
+  if (
+    message.includes("already exists") ||
+    message.includes("duplicate") ||
+    message.includes("taken")
+  ) {
+    return "This option is already in use. Please choose a different one.";
+  }
+
+  if (
+    message.includes("required") ||
+    message.includes("missing") ||
+    message.includes("invalid") ||
+    message.includes("validation")
+  ) {
+    return "Please check the required details and try again.";
+  }
+
+  if (message.includes("forbidden") || message.includes("unauthorized")) {
+    return "You do not have access to this workspace.";
+  }
+
+  if (message.includes("stripe")) {
+    return "Payment setup is temporarily unavailable. Please try again shortly.";
+  }
+
+  if (message.includes("email")) {
+    return "Please review the email address and try again.";
+  }
+
+  return fallback;
+}
+
 function isAuthEndpoint(path: string): boolean {
   return /^\/auth\/(register|login|refresh|logout)(?:$|\?)/.test(path);
 }

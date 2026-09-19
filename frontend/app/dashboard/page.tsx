@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { ApiError } from "../../lib/api/client";
+import { getUserFacingError } from "../../lib/api/client";
 import {
   createOrganization,
   listOrganizations,
@@ -52,11 +52,7 @@ export default function DashboardPage() {
       })
       .catch((caught) => {
         if (!cancelled)
-          setError(
-            caught instanceof ApiError
-              ? caught.message
-              : "Unable to load your workspaces.",
-          );
+          setError(getUserFacingError(caught, "Unable to load your workspaces."));
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);
@@ -80,9 +76,7 @@ export default function DashboardPage() {
       router.push(`/organizations/${organization.id}`);
     } catch (caught) {
       setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Unable to create this workspace.",
+        getUserFacingError(caught, "Unable to create this workspace."),
       );
     } finally {
       setSubmitting(false);
@@ -155,7 +149,7 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <Label htmlFor="organization-timezone">Local timezone</Label>
                   <select
-                    className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     id="organization-timezone"
                     value={timezone}
                     onChange={(event) => setTimezone(event.target.value)}
@@ -204,10 +198,11 @@ export default function DashboardPage() {
                 Your workspaces
               </h2>
               <Link
-                className="text-xs font-medium text-slate-500 hover:text-slate-950"
+                className="inline-flex items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-indigo-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                 href="/organizations"
               >
                 View all
+                <span aria-hidden="true">→</span>
               </Link>
             </div>
             {organizations.map((organization) => (

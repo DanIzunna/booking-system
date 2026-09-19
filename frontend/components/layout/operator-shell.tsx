@@ -4,7 +4,9 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { listOrganizations } from "../../lib/api/organizations";
 import { useSession } from "../../lib/auth/session-provider";
+import type { OrganizationSummary } from "../../types/organizations";
 import { AppSidebar } from "./app-sidebar";
 import { ProfileMenu } from "./profile-menu";
 
@@ -14,15 +16,23 @@ export function OperatorShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "true";
   });
   const organizationId = pathname.match(/^\/organizations\/([^/]+)/)?.[1];
+  const currentOrganization = organizations.find(({ id }) => id === organizationId);
 
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_COLLAPSE_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    void listOrganizations()
+      .then(setOrganizations)
+      .catch(() => setOrganizations([]));
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -45,7 +55,12 @@ export function OperatorShell({ children }: { children: ReactNode }) {
           <Menu className="size-5" />
         </button>
         <div className="hidden items-center gap-2 md:flex">
-          <ProfileMenu user={user} logout={logout} />
+          <ProfileMenu
+            user={user}
+            logout={logout}
+            role={currentOrganization?.role ?? null}
+            workspaceName={currentOrganization?.name ?? null}
+          />
         </div>
       </header>
       <div className="flex min-h-[calc(100vh-52px)]">
@@ -86,7 +101,14 @@ export function OperatorShell({ children }: { children: ReactNode }) {
               onNavigate={() => setMobileOpen(false)}
             />
             <div className="border-t border-slate-200 p-3">
-              <ProfileMenu user={user} logout={logout} mobile />
+              <ProfileMenu
+                user={user}
+                logout={logout}
+                role={currentOrganization?.role ?? null}
+                workspaceName={currentOrganization?.name ?? null}
+                mobile
+                onSwitchWorkspace={() => setMobileOpen(false)}
+              />
             </div>
           </div>
         </div>

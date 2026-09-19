@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -112,38 +113,43 @@ function ReservationRow({ reservation }: { reservation: ReservationResult }) {
   const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
-    <article className="rounded-[8px] border border-slate-200 bg-white p-4 sm:p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-base font-semibold text-slate-950">
-              Reservation
-            </h2>
-            <StatusBadge status={reservation.status} />
+    <Link
+      href={`/reservations/${reservation.id}`}
+      className="group block rounded-[10px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:p-5"
+    >
+      <article>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-base font-semibold text-slate-950">
+                Reservation
+              </h2>
+              <StatusBadge status={reservation.status} />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
+              <span className="inline-flex items-center gap-2">
+                <CalendarDays className="size-4 text-slate-400" aria-hidden="true" />
+                {formatZonedDateTime(reservation.startAt, browserTimeZone)}
+              </span>
+              <span>
+                Ends {formatZonedDateTime(reservation.endAt, browserTimeZone)}
+              </span>
+            </div>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
-            <span className="inline-flex items-center gap-2">
-              <CalendarDays className="size-4 text-slate-400" aria-hidden="true" />
-              {formatZonedDateTime(reservation.startAt, browserTimeZone)}
+          <div className="grid shrink-0 gap-2 text-left text-sm sm:text-right">
+            <span className="text-slate-500">
+              Quantity <strong className="font-medium text-slate-900">{reservation.quantity}</strong>
             </span>
-            <span>
-              Ends {formatZonedDateTime(reservation.endAt, browserTimeZone)}
+            <span className="font-medium text-slate-900">
+              {formatMoneyMinorUnits(reservation.amount, reservation.currency)}
             </span>
           </div>
         </div>
-        <div className="grid shrink-0 gap-2 text-left text-sm sm:text-right">
-          <span className="text-slate-500">
-            Quantity <strong className="font-medium text-slate-900">{reservation.quantity}</strong>
-          </span>
-          <span className="font-medium text-slate-900">
-            {formatMoneyMinorUnits(reservation.amount, reservation.currency)}
-          </span>
-        </div>
-      </div>
-      <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-400">
-        Times shown in your browser timezone · Reservation ID {reservation.id}
-      </p>
-    </article>
+        <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-400">
+          Times shown in your browser timezone · Reservation ID {reservation.id}
+        </p>
+      </article>
+    </Link>
   );
 }
 

@@ -19,6 +19,7 @@ export interface Bookable {
   organizationId: string;
   name: string;
   description?: string;
+  imageUrl?: string | null;
   slug: string;
   status: BookableStatus;
   pricingType: PricingType;

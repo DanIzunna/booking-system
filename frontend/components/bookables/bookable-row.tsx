@@ -1,7 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, RotateCcw, SquareArrowOutUpRight } from "lucide-react";
+import {
+  ArrowRight,
+  ImageIcon,
+  RotateCcw,
+  SquareArrowOutUpRight,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
 import { restoreBookable } from "../../lib/api/bookables";
 import { formatMoneyMinorUnits } from "../../lib/currency";
@@ -40,26 +47,51 @@ export function BookableRow({
   }
 
   return (
-    <div className="border-t border-slate-200 bg-white first:border-t-0">
+    <div className="border-t border-slate-200 bg-white first:border-t-0 transition-colors hover:bg-slate-50/80">
       <div className="grid gap-3 px-3 py-3 md:grid-cols-[minmax(0,2.4fr)_170px_150px_140px_180px] md:items-center md:px-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              className="truncate text-sm font-semibold text-slate-950 transition-colors hover:text-slate-700"
-              href={`/organizations/${organizationId}/bookables/${bookable.id}`}
-            >
-              {bookable.name}
-            </Link>
-            <BookableStatus status={bookable.status} />
+        <Link
+          href={`/organizations/${organizationId}/bookables/${bookable.id}`}
+          className="group min-w-0 rounded-[8px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+        >
+          <div className="flex items-start gap-3">
+            <div className="relative hidden h-14 w-20 shrink-0 overflow-hidden rounded-[8px] border border-slate-200 bg-slate-100 sm:block">
+              {bookable.imageUrl ? (
+                <Image
+                  src={bookable.imageUrl}
+                  alt={bookable.name}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%),linear-gradient(135deg,#f8fafc,#e2e8f0)] text-slate-500">
+                  <ImageIcon className="size-4" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-semibold text-slate-950">
+                  {bookable.name}
+                </span>
+                <BookableStatus status={bookable.status} />
+              </div>
+              {bookable.description ? (
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
+                  {bookable.description}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">No description</p>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
+                  <Users className="size-3 text-slate-500" aria-hidden="true" />
+                  {bookable.capacity} guest{bookable.capacity === 1 ? "" : "s"}
+                </span>
+              </div>
+            </div>
           </div>
-          {bookable.description ? (
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
-              {bookable.description}
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-slate-400">No description</p>
-          )}
-        </div>
+        </Link>
 
         <div className="text-sm text-slate-600 md:pl-2">
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 md:hidden">
@@ -95,7 +127,7 @@ export function BookableRow({
             </button>
           ) : null}
           <Link
-            className="inline-flex items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+            className="inline-flex items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
             href={`/organizations/${organizationId}/bookables/${bookable.id}`}
           >
             View

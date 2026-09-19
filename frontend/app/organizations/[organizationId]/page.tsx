@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
   Archive,
   CalendarDays,
@@ -20,11 +19,8 @@ import {
 import { use } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError } from "../../../lib/api/client";
-import {
-  getOrganization,
-  listOrganizations,
-} from "../../../lib/api/organizations";
+import { ApiError, getUserFacingError } from "../../../lib/api/client";
+import { getOrganization } from "../../../lib/api/organizations";
 import { listBookables } from "../../../lib/api/bookables";
 import {
   approveOrganizationReservation,
@@ -34,10 +30,7 @@ import {
 import { useSession } from "../../../lib/auth/session-provider";
 import { formatMoneyMinorUnits } from "../../../lib/currency";
 import { formatZonedDateTime } from "../../../lib/timezone";
-import type {
-  Organization,
-  MembershipRole,
-} from "../../../types/organizations";
+import type { Organization } from "../../../types/organizations";
 import type { Bookable } from "../../../types/bookables";
 import type { OrganizationReservation } from "../../../types/reservations";
 import { PageContainer } from "../../../components/layout/page-container";
@@ -56,7 +49,6 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
   const router = useRouter();
   const { status, user } = useSession();
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [role, setRole] = useState<MembershipRole | null>(null);
   const [loadedOrganizationId, setLoadedOrganizationId] = useState<
     string | null
   >(null);
@@ -72,6 +64,12 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
   const [copied, setCopied] = useState(false);
   const [currentTime] = useState(() => Date.now());
   const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const publicBookingUrl =
+    organization?.slug && origin
+      ? `${origin}/book/${organization.slug}`
+      : organization?.slug
+        ? `/book/${organization.slug}`
+        : null;
   const loading =
     status === "authenticated" && loadedOrganizationId !== organizationId;
 
@@ -86,29 +84,18 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
 
     void Promise.all([
       getOrganization(organizationId),
-      listOrganizations(),
       listBookables(organizationId),
       listOrganizationReservations(organizationId),
     ])
-      .then(
-        ([
-          nextOrganization,
-          memberships,
-          nextBookables,
-          nextReservations,
-        ]) => {
+      .then(([nextOrganization, nextBookables, nextReservations]) => {
         if (cancelled) return;
         setOrganization(nextOrganization);
-        setRole(
-          memberships.find(({ id }) => id === organizationId)?.role ?? null,
-        );
         setBookables(nextBookables);
         setReservations(nextReservations);
         setLoadedOrganizationId(organizationId);
         setBookablesLoaded(true);
         setReservationsLoaded(true);
-      },
-      )
+      })
       .catch((caught) => {
         if (!cancelled) {
           setErrorStatus(caught instanceof ApiError ? caught.statusCode : 500);
@@ -165,7 +152,7 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      setReservationError("Unable to copy the public booking link.");
+      setReservationError("We could not copy the public booking link. Please try again.");
     }
   }
 
@@ -189,9 +176,12 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
       await refreshReservations();
     } catch (caught) {
       setReservationError(
-        caught instanceof ApiError
-          ? caught.message
-          : `Unable to ${action} this reservation.`,
+        getUserFacingError(
+          caught,
+          action === "approve"
+            ? "Unable to approve this reservation."
+            : "Unable to reject this reservation.",
+        ),
       );
     } finally {
       setPendingActionId(null);
@@ -208,87 +198,111 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
 
   return (
     <PageContainer>
-      <main className="-mt-3 px-0 py-0">
-        <Link
-          className="mb-8 flex min-h-11 w-fit items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
-          href="/dashboard"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to workspaces
-        </Link>
+      <main className="py-0">
         {loading && (
-          <p className="mt-10 text-sm text-slate-500">Loading workspace...</p>
+          <p className="text-sm text-slate-500">Loading workspace...</p>
         )}
         {!loading && errorStatus === 403 && (
-          <section className="mt-10 max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-700">
-              Access denied
-            </p>
-            <h1 className="mt-3 text-3xl font-bold">
-              You cannot access this workspace.
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Your account does not have permission to view this workspace.
-            </p>
-          </section>
+          <WorkspaceStatePanel
+            eyebrow="Access denied"
+            title="You do not have access to this workspace"
+            description="Ask an owner to share or confirm access before opening this workspace again."
+            primaryHref="/dashboard"
+            primaryLabel="Back to dashboard"
+            secondaryHref="/organizations"
+            secondaryLabel="View workspaces"
+          />
         )}
         {!loading && errorStatus === 404 && (
-          <section className="mt-10 max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-700">
-              Workspace not found
-            </p>
-            <h1 className="mt-3 text-3xl font-bold">
-              This workspace is unavailable.
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              The workspace may not exist, or you may no longer belong to it.
-            </p>
-          </section>
+          <WorkspaceStatePanel
+            eyebrow="Workspace unavailable"
+            title="We could not find this workspace"
+            description="This workspace may have been removed, archived, or is no longer available to your account."
+            primaryHref="/dashboard"
+            primaryLabel="Back to dashboard"
+            secondaryHref="/organizations"
+            secondaryLabel="View workspaces"
+          />
         )}
         {!loading &&
           errorStatus !== null &&
           errorStatus !== 403 &&
           errorStatus !== 404 && (
-            <section className="mt-10 max-w-2xl">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-700">
-                Unable to load
-              </p>
-              <h1 className="mt-3 text-3xl font-bold">
-                We could not open this workspace.
-              </h1>
-              <p className="mt-3 text-sm leading-6 text-slate-500">
-                Please try again shortly.
-              </p>
-            </section>
+            <WorkspaceStatePanel
+              eyebrow="Temporary issue"
+              title="We could not open this workspace right now"
+              description="Something went wrong while loading this workspace. Please try again in a moment."
+              primaryHref="/dashboard"
+              primaryLabel="Back to dashboard"
+              secondaryHref="/organizations"
+              secondaryLabel="View workspaces"
+            />
           )}
         {!loading && errorStatus === null && organization && (
-          <section className="mt-8 space-y-10">
-            <div className="flex flex-col justify-between gap-5 border-b border-slate-200 pb-7 sm:flex-row sm:items-end">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                  Workspace overview
-                </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  {organization.name}
-                </h1>
-                <p className="mt-2 text-sm text-slate-500">
-                  {organization.slug} · {organization.timezone}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Organization role: {role ?? "MEMBER"}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-slate-950">
-                    {user.name}
+          <section className="space-y-6">
+            <header className="rounded-[18px] border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Workspace overview
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">Signed in</p>
+                  <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                    {organization.name}
+                  </h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                      {organization.slug}
+                    </span>
+                    <span>{organization.timezone}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {publicBookingUrl && (
+                    <>
+                      <a
+                        className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+                        href={publicBookingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="Open public booking page"
+                      >
+                        <ExternalLink className="size-3.5" aria-hidden="true" />
+                        Public page
+                      </a>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="min-w-10 px-3"
+                        onClick={() => void copyOrganizationLink()}
+                        aria-label={
+                          copied ? "Copied public booking link" : "Copy public booking link"
+                        }
+                        title={copied ? "Copied" : "Copy link"}
+                      >
+                        {copied ? (
+                          <Check className="size-4" />
+                        ) : (
+                          <Copy className="size-4" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {copied ? "Copied" : "Copy link"}
+                        </span>
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    onClick={() =>
+                      router.push(`/organizations/${organizationId}/bookables/new`)
+                    }
+                  >
+                    <Plus className="size-4" /> Create Bookable
+                  </Button>
                 </div>
               </div>
-            </div>
+            </header>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <SummaryStat
                 label="Total bookables"
                 value={bookables.length}
@@ -321,62 +335,32 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
               />
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)]">
-              <section className="border border-slate-200 bg-white p-5">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.78fr)]">
+              <section className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Public booking catalog
                 </p>
                 <h2 className="mt-2 text-base font-semibold text-slate-950">
                   Share this workspace
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Customers can browse published bookables from this page.
+                  Customers browse published bookables from this page.
                 </p>
-                {organization.slug ? (
-                  <div className="mt-5 flex flex-wrap items-center gap-2">
-                    <code className="min-w-0 max-w-full truncate rounded-[4px] bg-slate-100 px-2 py-2 text-xs text-slate-600">
-                      {origin
-                        ? `${origin}/book/${organization.slug}`
-                        : `/book/${organization.slug}`}
+                {publicBookingUrl ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <code className="min-w-0 max-w-full truncate rounded-[6px] bg-slate-100 px-2 py-2 text-[11px] text-slate-600">
+                      {publicBookingUrl}
                     </code>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="min-w-10 px-3"
-                      onClick={() => void copyOrganizationLink()}
-                      aria-label={
-                        copied ? "Copied public booking link" : "Copy public booking link"
-                      }
-                      title={copied ? "Copied" : "Copy link"}
-                    >
-                      {copied ? (
-                        <Check className="size-4" />
-                      ) : (
-                        <Copy className="size-4" />
-                      )}
-                      <span className="hidden sm:inline">
-                        {copied ? "Copied" : "Copy"}
-                      </span>
-                    </Button>
-                    <a
-                      className="inline-flex min-h-10 items-center gap-1 rounded-[6px] px-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                      href={`/book/${organization.slug}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <ExternalLink className="size-3.5" />
-                      Open
-                    </a>
                   </div>
                 ) : (
-                  <p className="mt-5 text-sm text-slate-400">
+                  <p className="mt-4 text-sm text-slate-400">
                     A public booking link will be available when this workspace has a slug.
                   </p>
                 )}
               </section>
 
-              <section className="border border-slate-200 bg-white p-5">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+              <section className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Quick actions
                 </p>
                 <div className="mt-4 grid gap-2">
@@ -403,12 +387,18 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                   >
                     View Reservations <ArrowRight className="size-4" />
                   </Link>
+                  <Link
+                    className="flex min-h-10 items-center justify-between rounded-[6px] border border-slate-300 px-4 text-[13px] font-medium text-slate-800 hover:bg-slate-50"
+                    href={`/organizations/${organizationId}/settings/payments`}
+                  >
+                    Workspace Settings <ArrowRight className="size-4" />
+                  </Link>
                 </div>
               </section>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between pb-3">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4 pb-1">
                 <div>
                   <h2 className="text-base font-semibold text-slate-950">
                     Bookables
@@ -418,10 +408,11 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                   </p>
                 </div>
                 <Link
-                  className="text-sm font-medium text-slate-700 hover:text-slate-950"
+                  className="inline-flex items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950"
                   href={`/organizations/${organizationId}/bookables`}
                 >
                   View all
+                  <span aria-hidden="true">→</span>
                 </Link>
               </div>
               {!bookablesLoaded ? (
@@ -448,7 +439,7 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
               ) : (
                 <BookableOverview
                   organizationId={organizationId}
-                    bookables={bookables.slice(0, 4)}
+                  bookables={bookables.slice(0, 4)}
                 />
               )}
             </div>
@@ -476,10 +467,11 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                   </p>
                 </div>
                 <Link
-                  className="shrink-0 text-sm font-medium text-slate-700 hover:text-slate-950"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950"
                   href={`/organizations/${organizationId}/reservations?status=PENDING`}
                 >
-                  View all
+                  View pending
+                  <span aria-hidden="true">→</span>
                 </Link>
               </div>
               {reservationError && (
@@ -519,6 +511,53 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
   );
 }
 
+function WorkspaceStatePanel({
+  eyebrow,
+  title,
+  description,
+  primaryHref,
+  primaryLabel,
+  secondaryHref,
+  secondaryLabel,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref: string;
+  secondaryLabel: string;
+}) {
+  return (
+    <section className="mx-auto max-w-2xl rounded-[18px] border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-8">
+      <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+        <span aria-hidden="true">!</span>
+      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {eyebrow}
+      </p>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+        {title}
+      </h1>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          className="inline-flex min-h-10 items-center justify-center rounded-[6px] bg-indigo-500 px-4 text-[13px] font-medium text-white hover:bg-indigo-600"
+          href={primaryHref}
+        >
+          {primaryLabel}
+        </Link>
+        <Link
+          className="inline-flex min-h-10 items-center justify-center rounded-[6px] border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+          href={secondaryHref}
+        >
+          {secondaryLabel}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function SummaryStat({
   label,
   value,
@@ -529,14 +568,14 @@ function SummaryStat({
   icon: typeof ClipboardList;
 }) {
   return (
-    <div className="border border-slate-200 bg-white px-4 py-4">
+    <div className="rounded-[12px] border border-slate-200 bg-white px-3 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
           {label}
         </p>
         <Icon className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
       </div>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+      <p className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
         {value}
       </p>
     </div>
@@ -572,10 +611,11 @@ function ReservationSection({
           <p className="mt-1 text-sm text-slate-500">{description}</p>
         </div>
         <Link
-          className="shrink-0 text-sm font-medium text-slate-700 hover:text-slate-950"
+          className="inline-flex shrink-0 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950"
           href={footerHref}
         >
           {footerLabel}
+          <span aria-hidden="true">→</span>
         </Link>
       </div>
       {!loaded ? (

@@ -56,13 +56,13 @@ function RegisterPageContent() {
     );
 
   return (
-    <main className="flex min-h-screen flex-col bg-slate-50 px-4 sm:px-6">
+    <main className="flex min-h-screen flex-col bg-[#F4F4F5] px-4 sm:px-6">
       <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between">
         <Link
           href="/"
           className="flex items-center gap-2 text-[13px] font-semibold text-slate-950"
         >
-          <span className="grid size-7 place-items-center rounded-[6px] bg-zinc-950 text-xs font-bold text-white">
+          <span className="grid size-7 place-items-center rounded-[6px] bg-indigo-500 text-xs font-bold text-white">
             B
           </span>
           Bookable
@@ -76,9 +76,12 @@ function RegisterPageContent() {
         </Link>
       </header>
       <div className="flex flex-1 items-center justify-center py-10 sm:py-14">
-        <section className="w-full max-w-[440px] px-1 py-6 sm:px-0">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+        <section className="w-full max-w-[440px] rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-7">
+          <div className="text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[10px] bg-indigo-500 text-sm font-bold text-white">
+              B
+            </div>
+            <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Create your account
             </p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
@@ -99,6 +102,7 @@ function RegisterPageContent() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
+                className="min-h-11"
               />
             </div>
             <div className="grid gap-1.5">
@@ -110,6 +114,7 @@ function RegisterPageContent() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
+                className="min-h-11"
               />
             </div>
             <div className="grid gap-1.5">
@@ -122,6 +127,7 @@ function RegisterPageContent() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
+                className="min-h-11"
               />
             </div>
             {error && (
@@ -132,14 +138,21 @@ function RegisterPageContent() {
                 {error}
               </p>
             )}
-            <Button className="w-full" type="submit" disabled={submitting}>
+            <Button className="w-full min-h-11" type="submit" disabled={submitting}>
               {submitting ? "Creating account..." : "Create account"}
             </Button>
           </form>
+          <div className="mt-6 flex items-center gap-3 text-slate-300">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+              or
+            </span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
           <p className="mt-6 text-center text-xs text-slate-500">
             Already have an account?{" "}
             <Link
-              className="font-medium text-slate-950 underline underline-offset-4 hover:text-slate-600"
+              className="font-medium text-indigo-600 underline underline-offset-4 hover:text-indigo-700"
               href={returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login"}
             >
               Sign in

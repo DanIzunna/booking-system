@@ -62,13 +62,13 @@ export function PublicHeader() {
         {!authenticated && (
           <div className="hidden items-center gap-2 md:flex">
             <Link
-              className="rounded-full px-3 py-2 text-[13px] font-semibold text-zinc-600"
+              className="rounded-full px-3 py-2 text-[13px] font-semibold text-indigo-600 hover:text-indigo-700"
               href="/login"
             >
               Sign in
             </Link>
             <Link
-              className="rounded-full bg-zinc-950 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-zinc-800"
+              className="rounded-full bg-indigo-500 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-indigo-600"
               href="/register"
             >
               Get started
@@ -130,7 +130,7 @@ export function PublicHeader() {
                 Sign in
               </Link>
               <Link
-                className="mt-2 block rounded-full bg-zinc-950 px-3 py-2.5 text-center text-sm font-semibold text-white"
+                className="mt-2 block rounded-full bg-indigo-500 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-indigo-600"
                 href="/register"
                 onClick={() => setOpen(false)}
               >

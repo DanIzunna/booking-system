@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Users } from "lucide-react";
-import { use } from "react";
-import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Search,
+  Users,
+} from "lucide-react";
+import { use, useEffect, useMemo, useState } from "react";
 import { ApiError } from "../../../lib/api/client";
 import { getPublicOrganization } from "../../../lib/api/public-booking";
 import { formatMoneyMinorUnits } from "../../../lib/currency";
@@ -24,6 +28,7 @@ export default function PublicOrganizationPage({
   );
   const [loading, setLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +49,22 @@ export default function PublicOrganizationPage({
     };
   }, [organizationSlug]);
 
+  const filteredBookables = useMemo(() => {
+    if (!organization) return [];
+    const query = search.trim().toLowerCase();
+    if (!query) return organization.bookables;
+    return organization.bookables.filter((bookable) => {
+      const searchableText = [
+        bookable.name,
+        bookable.description ?? "",
+        bookable.pricingType,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return searchableText.includes(query);
+    });
+  }, [organization, search]);
+
   return (
     <PublicShell context="Public catalog">
       {loading ? (
@@ -62,64 +83,97 @@ export default function PublicOrganizationPage({
           }
         />
       ) : (
-        <>
-          <header className="border-b border-slate-200 pb-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Public booking
-            </p>
-            <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-              {organization.name}
-            </h1>
-            <p className="mt-4 text-sm text-slate-500">
+        <div className="rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <header className="border-b border-slate-200 px-5 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Public booking
+                </p>
+                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                  {organization.name}
+                </h1>
+              </div>
+              <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-600">
+                {organization.bookables.length} available
+              </div>
+            </div>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">
               Book a resource from this organization.
             </p>
           </header>
 
-          <section
-            className="mt-9"
-            aria-labelledby="available-bookables-heading"
-          >
-            <div className="flex items-end justify-between gap-4 border-b border-slate-200 pb-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Available now
-                </p>
-                <h2
-                  id="available-bookables-heading"
-                  className="mt-2 text-xl font-semibold text-slate-950"
-                >
-                  Choose a Bookable
-                </h2>
+          <section className="px-5 pb-6 pt-6 sm:px-6 sm:pb-8" aria-labelledby="available-bookables-heading">
+            {organization.bookables.length > 0 && (
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <label htmlFor="bookable-search" className="sr-only">
+                    Search bookables
+                  </label>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                    <input
+                      id="bookable-search"
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search bookables..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-slate-500">
+                  {filteredBookables.length} result{filteredBookables.length === 1 ? "" : "s"}
+                </div>
               </div>
-              <span className="text-xs text-slate-500">
-                {organization.bookables.length} available
-              </span>
-            </div>
+            )}
 
             {organization.bookables.length === 0 ? (
               <EmptyState
                 title="Nothing available to book"
                 description="This organization does not currently have any available bookings."
               />
+            ) : filteredBookables.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+                <p className="text-base font-medium text-slate-900">No matching bookables</p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Try a different search term to find a resource for this workspace.
+                </p>
+              </div>
             ) : (
-              <div className="divide-y divide-slate-200 border-b border-slate-200">
-                {organization.bookables.map((bookable) => (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredBookables.map((bookable) => (
                   <Link
                     key={bookable.slug}
-                    className="group grid gap-4 py-5 transition-colors hover:bg-white sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-3"
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-slate-300 hover:shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
                     href={`/book/${organization.slug}/${bookable.slug}`}
                   >
-                    <div className="min-w-0">
-                      <h3 className="truncate text-lg font-semibold text-slate-950">
-                        {bookable.name}
-                      </h3>
-                      {bookable.description && (
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                          {bookable.description}
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
-                        <span className="font-medium text-slate-800">
+                    <div className="relative aspect-[16/9] overflow-hidden border-b border-slate-200 bg-zinc-100">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%)]" />
+                      <div className="absolute left-4 top-4 z-10 inline-flex items-center rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[10px] font-medium tracking-[0.12em] text-slate-700 backdrop-blur-sm">
+                        {bookable.pricingType === "FREE" ? "FREE" : "PAID"}
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="rounded-full border border-slate-200 bg-white/80 p-4 text-slate-700 backdrop-blur-sm">
+                          <CalendarDays className="size-6" aria-hidden="true" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-1 flex-col p-4">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950">
+                            {bookable.name}
+                          </h3>
+                        </div>
+                        <span
+                          className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                            bookable.pricingType === "FREE"
+                              ? "border border-slate-200 bg-slate-100 text-slate-700"
+                              : "bg-slate-950 text-white"
+                          }`}
+                        >
                           {bookable.pricingType === "FREE"
                             ? "Free"
                             : formatMoneyMinorUnits(
@@ -127,22 +181,37 @@ export default function PublicOrganizationPage({
                                 bookable.currency,
                               )}
                         </span>
-                        <span className="inline-flex items-center gap-1.5">
+                      </div>
+
+                      {bookable.description && (
+                        <p className="line-clamp-3 text-sm leading-6 text-slate-600">
+                          {bookable.description}
+                        </p>
+                      )}
+
+                      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
                           <Users className="size-3.5" aria-hidden="true" />
-                          Capacity {bookable.capacity}
+                          {bookable.capacity} seats
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+                          {bookable.pricingType === "FREE" ? "No payment" : "Paid booking"}
+                        </span>
+                      </div>
+
+                      <div className="mt-auto pt-5">
+                        <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-3.5 py-2.5 text-sm font-medium text-white transition-colors group-hover:bg-indigo-600">
+                          Book now
+                          <ArrowRight className="size-4" aria-hidden="true" />
                         </span>
                       </div>
                     </div>
-                    <span className="inline-flex min-h-10 w-fit items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-4 text-xs font-medium text-slate-800 transition-colors group-hover:border-slate-500">
-                      View
-                      <ArrowRight className="size-3.5" aria-hidden="true" />
-                    </span>
                   </Link>
                 ))}
               </div>
             )}
           </section>
-        </>
+        </div>
       )}
     </PublicShell>
   );

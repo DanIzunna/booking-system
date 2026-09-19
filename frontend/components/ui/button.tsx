@@ -14,7 +14,7 @@ export function Button({
 }: ButtonProps) {
   const variantClass =
     variant === "primary"
-      ? "border border-zinc-950 bg-zinc-950 text-white hover:border-zinc-800 hover:bg-zinc-800"
+      ? "border border-indigo-500 bg-indigo-500 text-white hover:border-indigo-600 hover:bg-indigo-600"
       : variant === "secondary"
         ? "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50"
         : variant === "ghost"
@@ -23,7 +23,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50",
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-[6px] px-4 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50",
         variantClass,
         className,
       )}

@@ -59,7 +59,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
-              className="inline-flex min-h-11 items-center gap-2 rounded-[6px] bg-zinc-950 px-5 text-[13px] font-medium text-white hover:bg-zinc-800"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[6px] bg-indigo-500 px-5 text-[13px] font-medium text-white hover:bg-indigo-600"
               href="/register"
             >
               Get started <ArrowRight className="size-4" aria-hidden="true" />
@@ -195,7 +195,7 @@ export default function Home() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              className="inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-zinc-950 px-4 text-[13px] font-medium text-white hover:bg-zinc-800"
+              className="inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-indigo-500 px-4 text-[13px] font-medium text-white hover:bg-indigo-600"
               href="/register"
             >
               Create a Bookable{" "}
@@ -219,7 +219,7 @@ export default function Home() {
             </p>
           </div>
           <Link
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-zinc-950 px-5 text-[13px] font-medium text-white hover:bg-zinc-800"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-indigo-500 px-5 text-[13px] font-medium text-white hover:bg-indigo-600"
             href="/register"
           >
             Create your first Bookable{" "}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError } from "../../../../../lib/api/client";
+import { getUserFacingError } from "../../../../../lib/api/client";
 import {
   connectStripe,
   disconnectPaymentAccount,
@@ -59,9 +59,7 @@ export default function OrganizationPaymentsPage({
       .catch((caught) => {
         if (!cancelled) {
           setError(
-            caught instanceof ApiError
-              ? caught.message
-              : "Unable to load payment settings.",
+            getUserFacingError(caught, "Unable to load payment settings."),
           );
         }
       })
@@ -81,9 +79,7 @@ export default function OrganizationPaymentsPage({
       window.location.assign(result.onboardingUrl);
     } catch (caught) {
       setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Unable to start Stripe onboarding.",
+        getUserFacingError(caught, "Unable to start Stripe onboarding."),
       );
       setAction(null);
     }
@@ -97,9 +93,7 @@ export default function OrganizationPaymentsPage({
       setAccount(result.account);
     } catch (caught) {
       setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Unable to synchronize Stripe.",
+        getUserFacingError(caught, "Unable to synchronize Stripe."),
       );
     } finally {
       setAction(null);
@@ -114,9 +108,7 @@ export default function OrganizationPaymentsPage({
       setAccount(nextAccount);
     } catch (caught) {
       setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Unable to disconnect the payment account.",
+        getUserFacingError(caught, "Unable to disconnect the payment account."),
       );
     } finally {
       setAction(null);

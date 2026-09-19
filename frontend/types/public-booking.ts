@@ -18,6 +18,7 @@ export interface PublicBookable {
   slug: string;
   name: string;
   description: string | null;
+  imageUrl?: string | null;
   capacity: number;
   status?: BookableStatus;
   pricingType: PricingType;
