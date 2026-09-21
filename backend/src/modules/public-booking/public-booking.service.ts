@@ -27,6 +27,15 @@ const publicBookableSelect = {
   price: true,
   currency: true,
   capacity: true,
+  images: {
+    orderBy: { sortOrder: "asc" },
+    select: {
+      id: true,
+      url: true,
+      sortOrder: true,
+      isPrimary: true,
+    },
+  },
   organization: { select: { id: true, name: true, timezone: true } },
   reservationRule: {
     select: {

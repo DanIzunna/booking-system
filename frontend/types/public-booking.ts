@@ -19,6 +19,7 @@ export interface PublicBookable {
   name: string;
   description: string | null;
   imageUrl?: string | null;
+  images: PublicBookableImage[];
   capacity: number;
   status?: BookableStatus;
   pricingType: PricingType;
@@ -31,6 +32,13 @@ export interface PublicBookable {
   price: number | null;
   currency: string | null;
   reservationRule: PublicReservationRule | null;
+}
+
+export interface PublicBookableImage {
+  id: string;
+  url: string;
+  sortOrder: number;
+  isPrimary: boolean;
 }
 
 export interface PublicOrganization {

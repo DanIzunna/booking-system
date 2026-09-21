@@ -115,6 +115,7 @@ describe("Public booking (integration)", () => {
         "currency",
         "description",
         "id",
+        "images",
         "name",
         "organization",
         "price",
@@ -127,6 +128,7 @@ describe("Public booking (integration)", () => {
     expect(response.body.organization.timezone).toBe("Africa/Lagos");
     expect(response.body.organization.memberships).toBeUndefined();
     expect(response.body.passwordHash).toBeUndefined();
+    expect(response.body.images).toEqual([]);
 
     const approvalRequired = await createBookable({
       confirmationPolicy: ConfirmationPolicy.REQUIRES_APPROVAL,
@@ -139,6 +141,106 @@ describe("Public booking (integration)", () => {
           "REQUIRES_APPROVAL",
         );
       });
+  });
+
+  it("returns ordered public-safe persisted images without storage internals", async () => {
+    const fixture = await createBookable();
+    const otherBookable = await createBookable();
+    await prisma.bookableImage.createMany({
+      data: [
+        {
+          bookableId: fixture.id,
+          organizationId,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organizationId}/bookables/${fixture.id}/middle.webp`,
+          url: "https://ik.example/middle.webp",
+          originalFilename: "middle.webp",
+          mimeType: "image/webp",
+          fileSizeBytes: 150,
+          width: 1100,
+          height: 750,
+          sortOrder: 1,
+          isPrimary: false,
+        },
+        {
+          bookableId: fixture.id,
+          organizationId,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organizationId}/bookables/${fixture.id}/second.png`,
+          url: "https://ik.example/second.png",
+          originalFilename: "second.png",
+          mimeType: "image/png",
+          fileSizeBytes: 200,
+          width: 1200,
+          height: 800,
+          sortOrder: 2,
+          isPrimary: false,
+        },
+        {
+          bookableId: fixture.id,
+          organizationId,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organizationId}/bookables/${fixture.id}/first.jpg`,
+          url: "https://ik.example/first.jpg",
+          originalFilename: "first.jpg",
+          mimeType: "image/jpeg",
+          fileSizeBytes: 100,
+          width: 1000,
+          height: 700,
+          sortOrder: 0,
+          isPrimary: true,
+        },
+        {
+          bookableId: otherBookable.id,
+          organizationId,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organizationId}/bookables/${otherBookable.id}/other.webp`,
+          url: "https://ik.example/other.webp",
+          originalFilename: "other.webp",
+          mimeType: "image/webp",
+          fileSizeBytes: 300,
+          width: 900,
+          height: 600,
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      ],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/public/bookables/${fixture.slug}`)
+      .expect(200);
+
+    expect(response.body.images).toEqual([
+      {
+        id: expect.any(String),
+        url: "https://ik.example/first.jpg",
+        sortOrder: 0,
+        isPrimary: true,
+      },
+      {
+        id: expect.any(String),
+        url: "https://ik.example/middle.webp",
+        sortOrder: 1,
+        isPrimary: false,
+      },
+      {
+        id: expect.any(String),
+        url: "https://ik.example/second.png",
+        sortOrder: 2,
+        isPrimary: false,
+      },
+    ]);
+    expect(response.body.images).toHaveLength(3);
+    expect(response.body.images[0]).not.toHaveProperty("provider");
+    expect(response.body.images[0]).not.toHaveProperty("providerKey");
+    expect(response.body.images[0]).not.toHaveProperty("organizationId");
+    expect(response.body.images[0]).not.toHaveProperty("bookableId");
+    expect(response.body.images[0]).not.toHaveProperty("mimeType");
+    expect(response.body.images[0]).not.toHaveProperty("fileSizeBytes");
+    expect(response.body.images[0]).not.toHaveProperty("width");
+    expect(response.body.images[0]).not.toHaveProperty("height");
+    expect(response.body.images[0]).not.toHaveProperty("originalFilename");
   });
 
   it("returns fixed-duration slots for a workspace-local date and respects capacity", async () => {
