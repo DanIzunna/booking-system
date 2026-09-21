@@ -30,6 +30,7 @@ import styles from "../../../../dashboard.module.css";
 import { PageContainer } from "../../../../../components/layout/page-container";
 import { BookableStatus as BookableStatusBadge } from "../../../../../components/bookables/bookable-status";
 import { PublicBookingLink } from "../../../../../components/bookables/public-booking-link";
+import { BookableImageManager } from "../../../../../components/bookables/bookable-image-manager";
 import { Button } from "../../../../../components/ui/button";
 
 const weekdays = [
@@ -419,6 +420,8 @@ export default function BookablePage({ params }: BookablePageProps) {
                 {bookable.description || "No description provided."}
               </p>
             </section>
+
+            {role !== null && <BookableImageManager bookableId={bookableId} />}
 
             <section className={styles.availabilitySection}>
               <p className={styles.sectionLabel}>Availability</p>
