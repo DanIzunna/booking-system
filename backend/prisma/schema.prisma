@@ -106,6 +106,7 @@ model Organization {
   updatedAt     DateTime                 @updatedAt @db.Timestamptz(3)
   memberships   OrganizationMembership[]
   bookables     Bookable[]
+  bookableImages BookableImage[]
   paymentAccount OrganizationPaymentAccount?
 }
 
@@ -164,6 +165,32 @@ model Bookable {
   images            BookableImage[]
 
   @@index([organizationId, status])
+}
+
+model BookableImage {
+  id               String      @id @default(uuid()) @db.Uuid
+  bookableId       String      @db.Uuid
+  organizationId   String      @db.Uuid
+  provider         String      @db.VarChar(40)
+  providerKey      String      @db.VarChar(255)
+  url              String      @db.Text
+  originalFilename String?     @db.VarChar(255)
+  mimeType         String      @db.VarChar(80)
+  fileSizeBytes    Int         @db.Integer
+  width            Int?
+  height           Int?
+  sortOrder        Int
+  isPrimary        Boolean     @default(false)
+  createdAt        DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime    @updatedAt @db.Timestamptz(3)
+
+  bookable     Bookable    @relation(fields: [bookableId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([bookableId, sortOrder])
+  @@unique([provider, providerKey])
+  @@index([bookableId])
+  @@index([organizationId])
 }
 
 model BookableReservationRule {
@@ -263,20 +290,6 @@ model AccessCode {
 
   @@index([reservationId, status])
   @@index([status, expiresAt])
-}
-
-model BookableImage {
-  id         String   @id @default(uuid()) @db.Uuid
-  bookableId String   @db.Uuid
-  storageKey String   @db.VarChar(500)
-  url        String   @db.VarChar(2000)
-  altText    String?  @db.VarChar(300)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
-  bookable   Bookable @relation(fields: [bookableId], references: [id], onDelete: Cascade)
-
-  @@index([bookableId, sortOrder])
 }
 
 model RefreshSession {
