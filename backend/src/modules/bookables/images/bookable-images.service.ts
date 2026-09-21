@@ -36,8 +36,22 @@ export class BookableImagesService {
 
   async authorizeUpload(userId: string, bookableId: string, input: AuthorizeBookableImageDto) {
     const bookable = await this.requireBookableMembership(userId, bookableId);
+    if (input.replaceImageId) {
+      const image = await this.prisma.bookableImage.findUnique({
+        where: { id: input.replaceImageId },
+        select: { bookableId: true, organizationId: true },
+      });
+      if (
+        !image ||
+        image.bookableId !== bookable.id ||
+        image.organizationId !== bookable.organizationId
+      ) {
+        throw new NotFoundException("Bookable image not found");
+      }
+    }
+
     const count = await this.prisma.bookableImage.count({ where: { bookableId } });
-    if (count >= MAX_BOOKABLE_IMAGES) {
+    if (!input.replaceImageId && count >= MAX_BOOKABLE_IMAGES) {
       throw new ConflictException("Bookable already has the maximum number of images");
     }
 

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 
 export class AuthorizeBookableImageDto {
   @ApiPropertyOptional({ example: "room-photo.jpg" })
@@ -12,4 +12,9 @@ export class AuthorizeBookableImageDto {
   @IsOptional()
   @IsIn(["image/jpeg", "image/png", "image/webp"])
   contentType?: string;
+
+  @ApiPropertyOptional({ format: "uuid" })
+  @IsOptional()
+  @IsUUID()
+  replaceImageId?: string;
 }

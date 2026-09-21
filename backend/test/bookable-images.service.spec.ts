@@ -70,6 +70,64 @@ describe("BookableImagesService", () => {
     }));
   });
 
+  it("allows a new upload with two existing images", async () => {
+    prisma.bookableImage.count.mockResolvedValue(2);
+    storage.authorizeUpload.mockResolvedValue({ folder: "expected" });
+
+    await expect(service.authorizeUpload("user-1", bookableId, {
+      originalFilename: "third.jpg",
+      contentType: "image/jpeg",
+    })).resolves.toEqual({ folder: "expected" });
+  });
+
+  it("rejects a new upload when three images already exist", async () => {
+    prisma.bookableImage.count.mockResolvedValue(3);
+
+    await expect(service.authorizeUpload("user-1", bookableId, {
+      originalFilename: "fourth.jpg",
+      contentType: "image/jpeg",
+    })).rejects.toBeInstanceOf(ConflictException);
+    expect(storage.authorizeUpload).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "nonexistent", image: null },
+    { label: "another Bookable", image: { bookableId: "other-bookable", organizationId } },
+    { label: "another organization", image: { bookableId, organizationId: "other-org" } },
+  ])("rejects replacement authorization for $label image IDs", async ({ image }) => {
+    prisma.bookableImage.findUnique.mockResolvedValue(image);
+    prisma.bookableImage.count.mockResolvedValue(3);
+
+    await expect(service.authorizeUpload("user-1", bookableId, {
+      originalFilename: "replacement.jpg",
+      contentType: "image/jpeg",
+      replaceImageId: imageOneId,
+    })).rejects.toBeInstanceOf(NotFoundException);
+    expect(storage.authorizeUpload).not.toHaveBeenCalled();
+  });
+
+  it.each([2, 3])("allows replacement authorization with %i existing images", async (count) => {
+    prisma.bookableImage.findUnique.mockResolvedValue({
+      bookableId,
+      organizationId,
+    });
+    prisma.bookableImage.count.mockResolvedValue(count);
+    storage.authorizeUpload.mockResolvedValue({
+      folder: `organizations/${organizationId}/bookables/${bookableId}`,
+    });
+
+    await expect(service.authorizeUpload("user-1", bookableId, {
+      originalFilename: "replacement.jpg",
+      contentType: "image/jpeg",
+      replaceImageId: imageOneId,
+    })).resolves.toEqual({
+      folder: `organizations/${organizationId}/bookables/${bookableId}`,
+    });
+    expect(storage.authorizeUpload).toHaveBeenCalledWith(expect.objectContaining({
+      folder: `organizations/${organizationId}/bookables/${bookableId}`,
+    }));
+  });
+
   it.each(["image/jpeg", "image/png", "image/webp"])("accepts %s from verified provider metadata", async (mimeType) => {
     storage.verifyUpload.mockResolvedValue(asset({ mimeType }));
     prisma.bookableImage.count.mockResolvedValue(0);
