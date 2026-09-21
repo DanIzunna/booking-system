@@ -1,14 +1,15 @@
 export type StorageProviderName = "IMAGEKIT";
 
 export interface StorageAssetRef {
-  provider: StorageProviderName | string;
+  provider: StorageProviderName;
+  providerId?: string;
   providerKey: string;
   publicUrl: string;
   originalFilename?: string;
   mimeType?: string;
   fileSizeBytes?: number;
-  width?: number;
-  height?: number;
+  width?: number | null;
+  height?: number | null;
 }
 
 export interface StorageUploadInput {
@@ -19,17 +20,38 @@ export interface StorageUploadInput {
   originalFilename?: string;
 }
 
-export interface StorageReplaceInput extends StorageUploadInput {
-  existingKey?: string;
+export interface StorageUploadAuthorization {
+  token: string;
+  expire: number;
+  signature: string;
+  publicKey: string;
+  urlEndpoint: string;
+  folder: string;
+  fileName: string;
+  maxFileSizeBytes: number;
+  allowedMimeTypes: string[];
+}
+
+export interface StorageVerifyInput {
+  providerId: string;
+  expectedPrefix: string;
+}
+
+export class StorageVerificationError extends Error {
+  constructor(message: string, readonly verifiedAsset?: StorageAssetRef) {
+    super(message);
+    this.name = "StorageVerificationError";
+  }
 }
 
 export abstract class StorageProvider {
-  abstract upload(input: StorageUploadInput): Promise<StorageAssetRef>;
+  abstract authorizeUpload(
+    input: Omit<StorageUploadInput, "buffer">,
+  ): Promise<StorageUploadAuthorization>;
 
-  abstract replace(
-    reference: StorageAssetRef,
-    input: StorageReplaceInput,
-  ): Promise<StorageAssetRef>;
+  abstract verifyUpload(input: StorageVerifyInput): Promise<StorageAssetRef>;
+
+  abstract upload(input: StorageUploadInput): Promise<StorageAssetRef>;
 
   abstract delete(reference: StorageAssetRef): Promise<void>;
 
