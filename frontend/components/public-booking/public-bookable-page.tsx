@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -48,6 +47,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { CustomerShell } from "../layout/customer-shell";
 import { PublicShell } from "../public/public-shell";
+import { PublicBookableGallery } from "./public-bookable-gallery";
 import {
   clearBookingSelection,
   loadBookingSelection,
@@ -439,25 +439,22 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
           Back to organization
         </Link>
 
-        <div className="relative overflow-hidden rounded-[14px] border border-slate-200 bg-slate-100">
-          <div className="relative aspect-[16/9] w-full">
-            {bookable.imageUrl ? (
-              <Image
-                src={bookable.imageUrl}
-                alt={bookable.name}
-                fill
-                unoptimized
-                className="object-cover"
-              />
-            ) : (
+        {bookable.images.length > 0 ? (
+          <PublicBookableGallery
+            bookableName={bookable.name}
+            images={bookable.images}
+          />
+        ) : (
+          <div className="relative overflow-hidden rounded-[14px] border border-slate-200 bg-slate-100">
+            <div className="relative aspect-[16/9] w-full">
               <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%),linear-gradient(135deg,#f8fafc,#e2e8f0)] text-slate-500">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-white/80 shadow-sm">
                   <CalendarDays className="size-8" aria-hidden="true" />
                 </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
           {bookable.organization.name}
