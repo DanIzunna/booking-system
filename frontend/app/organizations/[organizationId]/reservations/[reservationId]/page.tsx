@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Check, CircleX, X } from "lucide-react";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../../../../lib/api/client";
 import {
@@ -39,6 +39,8 @@ export default function OrganizationReservationDetailPage({
   const [actionError, setActionError] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [rejectOpen, setRejectOpen] = useState(false);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -70,7 +72,30 @@ export default function OrganizationReservationDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [organizationId, reservationId, status]);
+  }, [organizationId, reservationId, retryToken, status]);
+
+  useEffect(() => {
+    if (!rejectOpen) return;
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const focusFrame = requestAnimationFrame(() => {
+      document.getElementById("reject-reservation-cancel")?.focus();
+    });
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && pendingAction === null) {
+        closeRejectDialog();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pendingAction, rejectOpen]);
 
   async function refreshReservation() {
     const nextReservation = await getOrganizationReservation(
@@ -107,7 +132,7 @@ export default function OrganizationReservationDetailPage({
     try {
       await rejectOrganizationReservation(organizationId, reservation.id);
       await refreshReservation();
-      setRejectOpen(false);
+      closeRejectDialog();
     } catch (caught) {
       setActionError(
         caught instanceof ApiError
@@ -117,6 +142,25 @@ export default function OrganizationReservationDetailPage({
     } finally {
       setPendingAction(null);
     }
+  }
+
+  function retryLoading() {
+    if (loading) return;
+    setErrorStatus(null);
+    setErrorMessage("");
+    setReservation(null);
+    setLoading(true);
+    setRetryToken((current) => current + 1);
+  }
+
+  function openRejectDialog() {
+    if (pendingAction !== null) return;
+    setRejectOpen(true);
+  }
+
+  function closeRejectDialog() {
+    setRejectOpen(false);
+    requestAnimationFrame(() => previousFocusRef.current?.focus());
   }
 
   if (status === "loading") {
@@ -133,29 +177,38 @@ export default function OrganizationReservationDetailPage({
   const canManageReservation =
     reservation?.status === "PENDING" &&
     reservation.bookable.confirmationPolicy === "REQUIRES_APPROVAL";
-  const isAwaitingPayment =
-    reservation?.status === "PENDING" &&
-    reservation.bookable.confirmationPolicy !== "REQUIRES_APPROVAL" &&
-    reservation.payment?.status === "PENDING";
-
   return (
     <PageContainer>
       <main className="px-0 py-0">
-        <Link
-          className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
-          href={`/organizations/${organizationId}/reservations`}
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Reservations
-        </Link>
+        <div className="mb-3">
+          <Link
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2"
+            href={`/organizations/${organizationId}/reservations`}
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to Reservations
+          </Link>
+        </div>
 
         {loading ? (
-          <section className="mt-8 max-w-4xl space-y-4">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-5 w-96 max-w-full" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Skeleton className="h-48 rounded-[8px]" />
-              <Skeleton className="h-48 rounded-[8px]" />
+          <section className="mt-8 space-y-4" aria-busy="true" aria-label="Loading reservation">
+            <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-8 w-56" />
+                <Skeleton className="h-4 w-80 max-w-full" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-20" />
+              </div>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Skeleton className="h-36 rounded-[8px]" />
+              <Skeleton className="h-52 rounded-[8px]" />
+              <Skeleton className="h-36 rounded-[8px]" />
+              <Skeleton className="h-36 rounded-[8px]" />
+              <Skeleton className="h-28 rounded-[8px] lg:col-span-2" />
             </div>
           </section>
         ) : errorStatus !== null || !reservation ? (
@@ -179,32 +232,32 @@ export default function OrganizationReservationDetailPage({
                   ? "It may no longer be available, or it may not belong to this workspace."
                   : errorMessage || "Please try again shortly."}
             </p>
+            {errorStatus !== 403 && errorStatus !== 404 && (
+              <Button className="mt-5" type="button" onClick={retryLoading}>
+                Try again
+              </Button>
+            )}
           </section>
         ) : (
           <>
-            <header className="mt-8 flex flex-col justify-between gap-4 border-b border-slate-200 pb-7 sm:flex-row sm:items-end">
-              <div>
+            <header className="mt-3 flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
                     Reservation
-                  </p>
+                  </h1>
                   <StatusBadge status={reservation.status} />
                 </div>
-                <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
-                  Reservation
-                </h1>
-                <p className="mt-2 text-sm text-slate-500">
-                  {reservation.customer.name} · {reservation.bookable.name}
+                <p className="mt-2 text-sm font-medium text-slate-700">
+                  {reservation.customer.name}
+                  <span className="px-2 text-slate-400">·</span>
+                  {reservation.bookable.name}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Times shown in {timezone}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {canManageReservation &&
-                  reservation.payment?.status === "SUCCEEDED" && (
-                    <Badge variant="success">Paid · Awaiting approval</Badge>
-                  )}
-                {isAwaitingPayment && (
-                  <Badge variant="warning">Awaiting payment</Badge>
-                )}
                 {canManageReservation && (
                   <>
                     <Button
@@ -219,7 +272,7 @@ export default function OrganizationReservationDetailPage({
                       type="button"
                       variant="secondary"
                       disabled={pendingAction !== null}
-                      onClick={() => setRejectOpen(true)}
+                      onClick={openRejectDialog}
                     >
                       Reject
                     </Button>
@@ -237,41 +290,58 @@ export default function OrganizationReservationDetailPage({
               </div>
             )}
 
-            <div className="mt-8 grid gap-4 lg:grid-cols-2">
-              <DetailSection title="Customer">
-                <DetailItem label="Name" value={reservation.customer.name} />
-                <DetailItem label="Email" value={reservation.customer.email} />
-              </DetailSection>
+            <div className="mt-6 space-y-4">
+              <Card>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                    <section>
+                      <h2 className="text-base font-semibold text-slate-950">
+                        Customer
+                      </h2>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                        <DetailItem label="Name" value={reservation.customer.name} />
+                        <DetailItem label="Email" value={reservation.customer.email} />
+                      </div>
+                    </section>
 
-              <DetailSection title="Booking">
-                <DetailItem
-                  label="Bookable"
-                  value={reservation.bookable.name}
-                />
-                <DetailItem
-                  label="Date"
-                  value={formatDate(reservation.startAt, timezone)}
-                  icon={<CalendarDays className="size-4" />}
-                />
-                <DetailItem
-                  label="Start time"
-                  value={formatTime(reservation.startAt, timezone)}
-                />
-                <DetailItem
-                  label="End time"
-                  value={formatTime(reservation.endAt, timezone)}
-                />
-                <DetailItem
-                  label="Duration"
-                  value={formatDuration(reservation.startAt, reservation.endAt)}
-                />
-                <DetailItem
-                  label="Quantity"
-                  value={String(reservation.quantity)}
-                />
-              </DetailSection>
+                    <section className="border-slate-200 lg:border-l lg:pl-6">
+                      <h2 className="text-base font-semibold text-slate-950">
+                        Booking
+                      </h2>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <DetailItem
+                          label="Bookable"
+                          value={reservation.bookable.name}
+                        />
+                        <DetailItem
+                          label="Date"
+                          value={formatDate(reservation.startAt, timezone)}
+                          icon={<CalendarDays className="size-4" />}
+                        />
+                        <DetailItem
+                          label="Start time"
+                          value={formatTime(reservation.startAt, timezone)}
+                        />
+                        <DetailItem
+                          label="End time"
+                          value={formatTime(reservation.endAt, timezone)}
+                        />
+                        <DetailItem
+                          label="Duration"
+                          value={formatDuration(reservation.startAt, reservation.endAt)}
+                        />
+                        <DetailItem
+                          label="Quantity"
+                          value={String(reservation.quantity)}
+                        />
+                      </div>
+                    </section>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <DetailSection title="Payment">
+              <div className="grid gap-4 md:grid-cols-3">
+              <DetailSection title="Payment" compact>
                 <DetailItem
                   label="Amount"
                   value={formatMoneyMinorUnits(
@@ -286,7 +356,7 @@ export default function OrganizationReservationDetailPage({
                 />
               </DetailSection>
 
-              <DetailSection title="Approval">
+              <DetailSection title="Approval" compact>
                 <DetailItem
                   label="Confirmation policy"
                   value={humanizeStatus(reservation.bookable.confirmationPolicy)}
@@ -303,8 +373,13 @@ export default function OrganizationReservationDetailPage({
                 )}
               </DetailSection>
 
-              <DetailSection title="Metadata" className="lg:col-span-2">
-                <DetailItem label="Reservation ID" value={reservation.id} />
+              <DetailSection title="Metadata" compact>
+                <DetailItem
+                  label="Reservation ID"
+                  value={compactReservationId(reservation.id)}
+                  valueTitle={reservation.id}
+                  valueAriaLabel={`Reservation ID ${reservation.id}`}
+                />
                 <DetailItem
                   label="Created"
                   value={formatDateTime(reservation.createdAt, timezone)}
@@ -314,6 +389,7 @@ export default function OrganizationReservationDetailPage({
                   value={formatDateTime(reservation.updatedAt, timezone)}
                 />
               </DetailSection>
+              </div>
             </div>
           </>
         )}
@@ -330,7 +406,7 @@ export default function OrganizationReservationDetailPage({
                 type="button"
                 className="absolute right-3 top-3 grid size-8 place-items-center rounded-[6px] text-slate-500 hover:bg-slate-100 hover:text-slate-950"
                 aria-label="Close rejection dialog"
-                onClick={() => setRejectOpen(false)}
+                onClick={closeRejectDialog}
               >
                 <X className="size-4" />
               </button>
@@ -361,10 +437,11 @@ export default function OrganizationReservationDetailPage({
               </div>
               <div className="mt-5 flex justify-end gap-3">
                 <Button
+                  id="reject-reservation-cancel"
                   type="button"
                   variant="secondary"
                   disabled={pendingAction !== null}
-                  onClick={() => setRejectOpen(false)}
+                  onClick={closeRejectDialog}
                 >
                   Cancel
                 </Button>
@@ -388,17 +465,21 @@ export default function OrganizationReservationDetailPage({
 function DetailSection({
   title,
   className = "",
+  compact = false,
   children,
 }: {
   title: string;
   className?: string;
+  compact?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <Card className={className}>
-      <CardContent>
+      <CardContent className={compact ? "p-4" : undefined}>
         <h2 className="text-base font-semibold text-slate-950">{title}</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
+        <div className={compact ? "mt-3 grid gap-3 sm:grid-cols-2" : "mt-4 grid gap-4 sm:grid-cols-2"}>
+          {children}
+        </div>
       </CardContent>
     </Card>
   );
@@ -408,22 +489,35 @@ function DetailItem({
   label,
   value,
   icon,
+  valueTitle,
+  valueAriaLabel,
 }: {
   label: string;
   value: string;
   icon?: React.ReactNode;
+  valueTitle?: string;
+  valueAriaLabel?: string;
 }) {
   return (
     <div className="min-w-0">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 flex items-center gap-2 break-words text-sm font-medium text-slate-900">
+      <p
+        className="mt-2 flex items-center gap-2 break-words text-sm font-medium text-slate-900"
+        title={valueTitle}
+        aria-label={valueAriaLabel}
+      >
         {icon && <span className="text-slate-400">{icon}</span>}
         {value}
       </p>
     </div>
   );
+}
+
+function compactReservationId(value: string): string {
+  if (value.length <= 20) return value;
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
 }
 
 function StatusBadge({ status }: { status: OrganizationReservation["status"] }) {
