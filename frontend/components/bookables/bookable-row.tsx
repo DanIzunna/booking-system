@@ -35,6 +35,8 @@ export function BookableRow({
     bookable.pricingType === "FREE"
       ? "Free"
       : formatMoneyMinorUnits(bookable.price, bookable.currency);
+  const primaryImageUrl =
+    bookable.images.find((image) => image.isPrimary)?.url ?? null;
 
   async function handleRestore() {
     setRestoring(true);
@@ -54,10 +56,10 @@ export function BookableRow({
           className="group min-w-0 rounded-[8px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
         >
           <div className="flex items-start gap-3">
-            <div className="relative hidden h-14 w-20 shrink-0 overflow-hidden rounded-[8px] border border-slate-200 bg-slate-100 sm:block">
-              {bookable.imageUrl ? (
+            <div className="relative size-10 shrink-0 overflow-hidden rounded-[8px] border border-slate-200 bg-slate-100 sm:h-14 sm:w-20">
+              {primaryImageUrl ? (
                 <Image
-                  src={bookable.imageUrl}
+                  src={primaryImageUrl}
                   alt={bookable.name}
                   fill
                   unoptimized
@@ -83,31 +85,38 @@ export function BookableRow({
               ) : (
                 <p className="mt-1 text-xs text-slate-400">No description</p>
               )}
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+              <div className="mt-2 hidden flex-wrap items-center gap-2 text-[11px] text-slate-600 md:flex">
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
                   <Users className="size-3 text-slate-500" aria-hidden="true" />
                   {bookable.capacity} guest{bookable.capacity === 1 ? "" : "s"}
                 </span>
               </div>
+              <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 md:hidden">
+                <span className="inline-flex items-center gap-1.5">
+                  <Users className="size-3.5 text-slate-500" aria-hidden="true" />
+                  {bookable.capacity} guest{bookable.capacity === 1 ? "" : "s"}
+                </span>
+                <span className="font-medium text-slate-800">{priceText}</span>
+              </div>
             </div>
           </div>
         </Link>
 
-        <div className="text-sm text-slate-600 md:pl-2">
+        <div className="hidden text-sm text-slate-600 md:block md:pl-2">
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 md:hidden">
             Status
           </div>
           <div className="mt-1 md:mt-0">{statusText}</div>
         </div>
 
-        <div className="text-sm text-slate-600 md:pl-2">
+        <div className="hidden text-sm text-slate-600 md:block md:pl-2">
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 md:hidden">
             Capacity
           </div>
           <div className="mt-1 md:mt-0">Capacity · {bookable.capacity}</div>
         </div>
 
-        <div className="text-sm font-medium text-slate-800 md:pl-2">
+        <div className="hidden text-sm font-medium text-slate-800 md:block md:pl-2">
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 md:hidden">
             Price
           </div>
@@ -117,7 +126,7 @@ export function BookableRow({
         <div className="flex flex-wrap items-center justify-end gap-2 md:justify-start">
           {bookable.status === "ARCHIVED" ? (
             <button
-              className="inline-flex items-center gap-1.5 rounded-[6px] border border-amber-200 bg-white px-2.5 py-2 text-xs font-medium text-amber-800 transition-colors hover:border-amber-300 hover:bg-amber-50"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-[6px] border border-amber-200 bg-white px-2.5 py-2 text-xs font-medium text-amber-800 transition-colors hover:border-amber-300 hover:bg-amber-50 sm:min-h-0"
               type="button"
               onClick={() => void handleRestore()}
               disabled={restoring}
@@ -127,7 +136,7 @@ export function BookableRow({
             </button>
           ) : null}
           <Link
-            className="inline-flex items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+            className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:min-h-0"
             href={`/organizations/${organizationId}/bookables/${bookable.id}`}
           >
             View
@@ -135,7 +144,7 @@ export function BookableRow({
           </Link>
           {bookable.status === "PUBLISHED" ? (
             <a
-              className="inline-flex items-center gap-2 rounded-[6px] border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100"
+              className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 sm:min-h-0"
               href={`/book/${organizationSlug}/${bookable.slug}`}
               target="_blank"
               rel="noreferrer"
