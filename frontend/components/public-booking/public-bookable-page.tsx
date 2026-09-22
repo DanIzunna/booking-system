@@ -45,6 +45,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Skeleton } from "../ui/skeleton";
 import { CustomerShell } from "../layout/customer-shell";
 import { PublicShell } from "../public/public-shell";
 import { PublicBookableGallery } from "./public-bookable-gallery";
@@ -430,44 +431,46 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
 
   return (
     <BookingExperienceShell authenticated={sessionStatus === "authenticated" && !!user}>
-      <header className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-6">
+        <header className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-6">
         <Link
-          className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:mb-5"
           href={`/book/${organizationSlug}`}
         >
           <ArrowLeft className="size-3.5" aria-hidden="true" />
           Back to organization
         </Link>
 
-        {bookable.images.length > 0 ? (
-          <PublicBookableGallery
-            bookableName={bookable.name}
-            images={bookable.images}
-          />
-        ) : (
-          <div className="relative overflow-hidden rounded-[14px] border border-slate-200 bg-slate-100">
-            <div className="relative aspect-[16/9] w-full">
-              <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%),linear-gradient(135deg,#f8fafc,#e2e8f0)] text-slate-500">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-white/80 shadow-sm">
-                  <CalendarDays className="size-8" aria-hidden="true" />
+        <div className="lg:mx-auto lg:max-w-4xl">
+          {bookable.images.length > 0 ? (
+            <PublicBookableGallery
+              bookableName={bookable.name}
+              images={bookable.images}
+            />
+          ) : (
+            <div className="relative overflow-hidden rounded-[14px] border border-slate-200 bg-slate-100">
+              <div className="relative aspect-[16/9] w-full">
+                <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%),linear-gradient(135deg,#f8fafc,#e2e8f0)] text-slate-500">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-white/80 shadow-sm">
+                    <CalendarDays className="size-8" aria-hidden="true" />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 sm:mt-5">
           {bookable.organization.name}
         </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:mt-3 sm:text-4xl">
           {bookable.name}
         </h1>
         {bookable.description && (
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:mt-3">
             {bookable.description}
           </p>
         )}
-        <div className="mt-6 grid gap-2 border-t border-slate-100 pt-5 sm:grid-cols-3">
+        <div className="mt-4 grid gap-1.5 border-t border-slate-100 pt-4 sm:mt-6 sm:grid-cols-3 sm:gap-2 sm:pt-5">
           <span className="inline-flex min-h-10 items-center gap-2 rounded-[6px] bg-slate-50 px-3 text-xs text-slate-600">
             <CalendarDays className="size-4" aria-hidden="true" />{" "}
             {formatTimeZoneName(bookable.organization.timezone)}
@@ -481,7 +484,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
               : `${formatConfiguredMoney(bookable.price, bookable.currency)} per unit`}
           </span>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-4">
           <Badge
             variant={
               bookable.confirmationPolicy === "REQUIRES_APPROVAL"
@@ -501,7 +504,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
         </div>
       </header>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8">
+      <div className="mt-4 grid gap-5 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8">
         <section
           className="rounded-[8px] border border-slate-200 bg-slate-50 p-4 sm:p-5"
           aria-labelledby="booking-step-heading"
@@ -534,7 +537,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
 
           {step === "schedule" && (
             <div className="mt-6 grid gap-5">
-              <div className="rounded-[8px] border border-slate-200 bg-white p-5">
+              <div className="rounded-[8px] border-b border-slate-200 bg-transparent pb-4 sm:rounded-[8px] sm:border sm:bg-white sm:p-5">
                 <Label htmlFor="booking-date">Select a date</Label>
                 <Input
                   id="booking-date"
@@ -558,7 +561,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
                   Times are shown in the workspace timezone.
                 </p>
               </div>
-              <div className="rounded-[8px] border border-slate-200 bg-white p-5">
+              <div className="rounded-[8px] border-t border-slate-200 bg-transparent pt-4 sm:rounded-[8px] sm:border sm:bg-white sm:p-5">
                 <div className="flex items-start gap-3">
                   <Clock3
                     className="mt-0.5 size-4 text-slate-500"
@@ -1143,10 +1146,37 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 function LoadingState() {
   return (
-    <div className="space-y-4" aria-busy="true">
-      <div className="h-8 w-2/3 animate-pulse rounded-[6px] bg-slate-200" />
-      <div className="h-4 w-full animate-pulse rounded-[6px] bg-slate-200" />
-      <div className="h-48 rounded-[8px] border border-slate-200 bg-white" />
+    <div className="space-y-4" aria-busy="true" aria-label="Loading booking page">
+      <Skeleton className="h-10 w-40" />
+      <div className="rounded-[18px] border border-slate-200 bg-white p-4 sm:p-6">
+        <Skeleton className="h-4 w-36" />
+        <Skeleton className="mt-3 aspect-[16/9] w-full rounded-[14px]" />
+        <Skeleton className="mt-4 h-3 w-32" />
+        <Skeleton className="mt-3 h-9 w-2/3 max-w-lg" />
+        <Skeleton className="mt-3 h-4 w-full max-w-2xl" />
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8">
+        <div className="rounded-[8px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="mt-3 h-7 w-64 max-w-full" />
+          <Skeleton className="mt-6 h-24 w-full" />
+          <Skeleton className="mt-5 h-28 w-full" />
+        </div>
+        <div className="h-fit rounded-[8px] border border-slate-200 bg-white p-5">
+          <Skeleton className="h-4 w-32" />
+          <div className="mt-5 space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-3/5" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
