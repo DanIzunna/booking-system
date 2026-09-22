@@ -4,8 +4,20 @@ import type {
   PublicAvailabilityCheckResult,
   PublicAvailabilityResponse,
   PublicBookable,
+  PublicBookableImage,
   PublicOrganization,
 } from "../../types/public-booking";
+
+export type PublicOrganizationCatalog = Omit<
+  PublicOrganization,
+  "bookables"
+> & {
+  bookables: Array<
+    PublicOrganization["bookables"][number] & {
+      images: PublicBookableImage[];
+    }
+  >;
+};
 
 function basePath(organizationSlug: string, bookableSlug?: string): string {
   const path = [organizationSlug, bookableSlug]
@@ -17,8 +29,8 @@ function basePath(organizationSlug: string, bookableSlug?: string): string {
 
 export function getPublicOrganization(
   organizationSlug: string,
-): Promise<PublicOrganization> {
-  return apiRequest<PublicOrganization>(
+): Promise<PublicOrganizationCatalog> {
+  return apiRequest<PublicOrganizationCatalog>(
     `/public/bookables/organizations/${encodeURIComponent(organizationSlug)}`,
   );
 }

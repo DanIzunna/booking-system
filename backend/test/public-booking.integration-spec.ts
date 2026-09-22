@@ -243,6 +243,88 @@ describe("Public booking (integration)", () => {
     expect(response.body.images[0]).not.toHaveProperty("originalFilename");
   });
 
+  it("returns ordered public-safe images in the organization catalog", async () => {
+    const withImages = await createBookable();
+    const withoutImages = await createBookable();
+    const unpublished = await createBookable({ status: BookableStatus.DRAFT });
+    const organization = await prisma.organization.findUniqueOrThrow({
+      where: { id: organizationId },
+      select: { slug: true },
+    });
+
+    await prisma.bookableImage.createMany({
+      data: [
+        {
+          bookableId: withImages.id,
+          organizationId,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organizationId}/bookables/${withImages.id}/second.webp`,
+          url: "https://ik.example/catalog-second.webp",
+          originalFilename: "second.webp",
+          mimeType: "image/webp",
+          fileSizeBytes: 200,
+          width: 1200,
+          height: 800,
+          sortOrder: 2,
+          isPrimary: false,
+        },
+        {
+          bookableId: withImages.id,
+          organizationId,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organizationId}/bookables/${withImages.id}/first.jpg`,
+          url: "https://ik.example/catalog-first.jpg",
+          originalFilename: "first.jpg",
+          mimeType: "image/jpeg",
+          fileSizeBytes: 100,
+          width: 1000,
+          height: 700,
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      ],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/public/bookables/organizations/${organization.slug}`)
+      .expect(200);
+    const catalogWithImages = response.body.bookables.find(
+      (bookable: { slug: string }) => bookable.slug === withImages.slug,
+    );
+    const catalogWithoutImages = response.body.bookables.find(
+      (bookable: { slug: string }) => bookable.slug === withoutImages.slug,
+    );
+
+    expect(catalogWithImages.images).toEqual([
+      {
+        id: expect.any(String),
+        url: "https://ik.example/catalog-first.jpg",
+        sortOrder: 0,
+        isPrimary: true,
+      },
+      {
+        id: expect.any(String),
+        url: "https://ik.example/catalog-second.webp",
+        sortOrder: 2,
+        isPrimary: false,
+      },
+    ]);
+    expect(catalogWithImages.images[0].isPrimary).toBe(true);
+    expect(catalogWithImages.images[0]).not.toHaveProperty("provider");
+    expect(catalogWithImages.images[0]).not.toHaveProperty("providerKey");
+    expect(catalogWithImages.images[0]).not.toHaveProperty("originalFilename");
+    expect(catalogWithImages.images[0]).not.toHaveProperty("mimeType");
+    expect(catalogWithImages.images[0]).not.toHaveProperty("fileSizeBytes");
+    expect(catalogWithImages.images[0]).not.toHaveProperty("width");
+    expect(catalogWithImages.images[0]).not.toHaveProperty("height");
+    expect(catalogWithoutImages.images).toEqual([]);
+    expect(response.body.bookables).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ slug: unpublished.slug }),
+      ]),
+    );
+  });
+
   it("returns fixed-duration slots for a workspace-local date and respects capacity", async () => {
     const fixture = await createBookable({
       capacity: 2,

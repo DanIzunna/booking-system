@@ -65,6 +65,15 @@ const publicOrganizationSelect = {
       price: true,
       currency: true,
       capacity: true,
+      images: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          url: true,
+          sortOrder: true,
+          isPrimary: true,
+        },
+      },
     },
   },
 } satisfies Prisma.OrganizationSelect;

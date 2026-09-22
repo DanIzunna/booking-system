@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -9,9 +10,11 @@ import {
 } from "lucide-react";
 import { use, useEffect, useMemo, useState } from "react";
 import { ApiError } from "../../../lib/api/client";
-import { getPublicOrganization } from "../../../lib/api/public-booking";
+import {
+  getPublicOrganization,
+  type PublicOrganizationCatalog,
+} from "../../../lib/api/public-booking";
 import { formatMoneyMinorUnits } from "../../../lib/currency";
-import type { PublicOrganization } from "../../../types/public-booking";
 import { EmptyState } from "../../../components/empty-state";
 import { PublicShell } from "../../../components/public/public-shell";
 
@@ -23,9 +26,8 @@ export default function PublicOrganizationPage({
   params,
 }: PublicOrganizationPageProps) {
   const { organizationSlug } = use(params);
-  const [organization, setOrganization] = useState<PublicOrganization | null>(
-    null,
-  );
+  const [organization, setOrganization] =
+    useState<PublicOrganizationCatalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -143,70 +145,94 @@ export default function PublicOrganizationPage({
             ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredBookables.map((bookable) => (
-                  <Link
-                    key={bookable.slug}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-slate-300 hover:shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
-                    href={`/book/${organization.slug}/${bookable.slug}`}
-                  >
-                    <div className="relative aspect-[16/9] overflow-hidden border-b border-slate-200 bg-zinc-100">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%)]" />
-                      <div className="absolute left-4 top-4 z-10 inline-flex items-center rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[10px] font-medium tracking-[0.12em] text-slate-700 backdrop-blur-sm">
-                        {bookable.pricingType === "FREE" ? "FREE" : "PAID"}
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="rounded-full border border-slate-200 bg-white/80 p-4 text-slate-700 backdrop-blur-sm">
-                          <CalendarDays className="size-6" aria-hidden="true" />
+                  (() => {
+                    const imageUrl =
+                      bookable.images?.find((image) => image.isPrimary)?.url ??
+                      bookable.images?.[0]?.url ??
+                      null;
+
+                    return (
+                      <Link
+                        key={bookable.slug}
+                        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-slate-300 hover:shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
+                        href={`/book/${organization.slug}/${bookable.slug}`}
+                      >
+                        <div className="relative aspect-[16/9] overflow-hidden border-b border-slate-200 bg-zinc-100">
+                          {imageUrl ? (
+                            <Image
+                              src={imageUrl}
+                              alt={bookable.name}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="rounded-full border border-slate-200 bg-white/80 p-4 text-slate-700 backdrop-blur-sm">
+                                <CalendarDays
+                                  className="size-6"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%)]" />
+                          <div className="absolute left-4 top-4 z-10 inline-flex items-center rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[10px] font-medium tracking-[0.12em] text-slate-700 backdrop-blur-sm">
+                            {bookable.pricingType === "FREE" ? "FREE" : "PAID"}
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="flex flex-1 flex-col p-4">
-                      <div className="mb-3 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950">
-                            {bookable.name}
-                          </h3>
+                        <div className="flex flex-1 flex-col p-4">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950">
+                                {bookable.name}
+                              </h3>
+                            </div>
+                            <span
+                              className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                                bookable.pricingType === "FREE"
+                                  ? "border border-slate-200 bg-slate-100 text-slate-700"
+                                  : "bg-slate-950 text-white"
+                              }`}
+                            >
+                              {bookable.pricingType === "FREE"
+                                ? "Free"
+                                : formatMoneyMinorUnits(
+                                    bookable.price,
+                                    bookable.currency,
+                                  )}
+                            </span>
+                          </div>
+
+                          {bookable.description && (
+                            <p className="line-clamp-3 text-sm leading-6 text-slate-600">
+                              {bookable.description}
+                            </p>
+                          )}
+
+                          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+                              <Users className="size-3.5" aria-hidden="true" />
+                              {bookable.capacity} seats
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+                              {bookable.pricingType === "FREE"
+                                ? "No payment"
+                                : "Paid booking"}
+                            </span>
+                          </div>
+
+                          <div className="mt-auto pt-5">
+                            <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-3.5 py-2.5 text-sm font-medium text-white transition-colors group-hover:bg-indigo-600">
+                              Book now
+                              <ArrowRight className="size-4" aria-hidden="true" />
+                            </span>
+                          </div>
                         </div>
-                        <span
-                          className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                            bookable.pricingType === "FREE"
-                              ? "border border-slate-200 bg-slate-100 text-slate-700"
-                              : "bg-slate-950 text-white"
-                          }`}
-                        >
-                          {bookable.pricingType === "FREE"
-                            ? "Free"
-                            : formatMoneyMinorUnits(
-                                bookable.price,
-                                bookable.currency,
-                              )}
-                        </span>
-                      </div>
-
-                      {bookable.description && (
-                        <p className="line-clamp-3 text-sm leading-6 text-slate-600">
-                          {bookable.description}
-                        </p>
-                      )}
-
-                      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
-                          <Users className="size-3.5" aria-hidden="true" />
-                          {bookable.capacity} seats
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
-                          {bookable.pricingType === "FREE" ? "No payment" : "Paid booking"}
-                        </span>
-                      </div>
-
-                      <div className="mt-auto pt-5">
-                        <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-3.5 py-2.5 text-sm font-medium text-white transition-colors group-hover:bg-indigo-600">
-                          Book now
-                          <ArrowRight className="size-4" aria-hidden="true" />
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
+                      </Link>
+                    );
+                  })()
                 ))}
               </div>
             )}
