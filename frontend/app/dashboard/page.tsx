@@ -98,10 +98,7 @@ export default function DashboardPage() {
       <main className="px-0 py-0">
         <header className="flex flex-col justify-between gap-5 border-b border-slate-200 pb-7 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Dashboard
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
               Good to see you, {user.name}
             </h1>
             <p className="mt-2 text-sm text-slate-500">
@@ -192,7 +189,7 @@ export default function DashboardPage() {
             />
           </div>
         ) : (
-          <section className="mt-8 max-w-3xl">
+          <section className="mx-auto mt-8 w-full max-w-6xl">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h2 className="text-sm font-semibold text-slate-950">
                 Your workspaces
@@ -205,9 +202,11 @@ export default function DashboardPage() {
                 <span aria-hidden="true">→</span>
               </Link>
             </div>
-            {organizations.map((organization) => (
-              <WorkspaceRow key={organization.id} organization={organization} />
-            ))}
+            <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
+              {organizations.map((organization) => (
+                <WorkspaceRow key={organization.id} organization={organization} />
+              ))}
+            </div>
           </section>
         )}
       </main>

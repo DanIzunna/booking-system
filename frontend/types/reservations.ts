@@ -26,6 +26,10 @@ export interface ReservationPayment {
 export interface ReservationResult {
   id: string;
   bookableId: string;
+  bookable: {
+    id: string;
+    name: string;
+  };
   startAt: string;
   endAt: string;
   quantity: number;
@@ -40,6 +44,7 @@ export interface ReservationResult {
 
 export interface ReservationConfirmation extends ReservationResult {
   bookable: {
+    id: string;
     name: string;
     organization: {
       name: string;

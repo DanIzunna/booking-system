@@ -38,11 +38,12 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
               </div>
               <span
                 className={cn(
-                  "font-medium",
+                  "hidden font-medium sm:inline",
                   isActive && "text-slate-900",
                   isComplete && "text-teal-700",
                   !isActive && !isComplete && "text-slate-500",
                 )}
+                title={step.label}
               >
                 {step.label}
               </span>

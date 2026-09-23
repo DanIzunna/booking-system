@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { use, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { ApiError } from "../../../lib/api/client";
 import {
   getPublicOrganization,
@@ -17,6 +18,8 @@ import {
 import { formatMoneyMinorUnits } from "../../../lib/currency";
 import { EmptyState } from "../../../components/empty-state";
 import { PublicShell } from "../../../components/public/public-shell";
+import { Button } from "../../../components/ui/button";
+import { Skeleton } from "../../../components/ui/skeleton";
 
 interface PublicOrganizationPageProps {
   params: Promise<{ organizationSlug: string }>;
@@ -31,6 +34,7 @@ export default function PublicOrganizationPage({
   const [loading, setLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +53,15 @@ export default function PublicOrganizationPage({
     return () => {
       cancelled = true;
     };
-  }, [organizationSlug]);
+  }, [organizationSlug, retryToken]);
+
+  function retryLoading() {
+    if (loading) return;
+    setErrorStatus(null);
+    setOrganization(null);
+    setLoading(true);
+    setRetryToken((current) => current + 1);
+  }
 
   const filteredBookables = useMemo(() => {
     if (!organization) return [];
@@ -83,16 +95,26 @@ export default function PublicOrganizationPage({
               ? "Check the link and try again."
               : "Please try again shortly."
           }
+          action={
+            errorStatus === 403 || errorStatus === 404 ? undefined : (
+              <Button type="button" onClick={retryLoading}>
+                Try again
+              </Button>
+            )
+          }
         />
       ) : (
-        <div className="rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div>
           <header className="border-b border-slate-200 px-5 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Public booking
                 </p>
-                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                <h1
+                  id="available-bookables-heading"
+                  className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl"
+                >
                   {organization.name}
                 </h1>
               </div>
@@ -141,6 +163,14 @@ export default function PublicOrganizationPage({
                 <p className="mt-2 text-sm text-slate-500">
                   Try a different search term to find a resource for this workspace.
                 </p>
+                <Button
+                  className="mt-5"
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setSearch("")}
+                >
+                  Clear search
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -177,15 +207,12 @@ export default function PublicOrganizationPage({
                             </div>
                           )}
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_55%)]" />
-                          <div className="absolute left-4 top-4 z-10 inline-flex items-center rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[10px] font-medium tracking-[0.12em] text-slate-700 backdrop-blur-sm">
-                            {bookable.pricingType === "FREE" ? "FREE" : "PAID"}
-                          </div>
                         </div>
 
                         <div className="flex flex-1 flex-col p-4">
                           <div className="mb-3 flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950">
+                              <h3 className="line-clamp-2 text-lg font-semibold tracking-tight text-slate-950">
                                 {bookable.name}
                               </h3>
                             </div>
@@ -216,11 +243,6 @@ export default function PublicOrganizationPage({
                               <Users className="size-3.5" aria-hidden="true" />
                               {bookable.capacity} seats
                             </span>
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
-                              {bookable.pricingType === "FREE"
-                                ? "No payment"
-                                : "Paid booking"}
-                            </span>
                           </div>
 
                           <div className="mt-auto pt-5">
@@ -245,11 +267,39 @@ export default function PublicOrganizationPage({
 
 function CatalogLoadingState() {
   return (
-    <div className="space-y-4" aria-busy="true">
-      <div className="h-4 w-32 animate-pulse rounded-[6px] bg-slate-200" />
-      <div className="h-12 w-2/3 animate-pulse rounded-[6px] bg-slate-200" />
-      <div className="h-4 w-full animate-pulse rounded-[6px] bg-slate-200" />
-      <div className="h-48 rounded-[8px] border border-slate-200 bg-white" />
+    <div
+      className="rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      aria-busy="true"
+      aria-label="Loading public catalog"
+    >
+      <header className="border-b border-slate-200 px-5 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="mt-4 h-10 w-2/3 max-w-lg" />
+        <Skeleton className="mt-4 h-4 w-full max-w-xl" />
+      </header>
+      <section className="px-5 pb-6 pt-6 sm:px-6 sm:pb-8">
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div
+              key={index}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+            >
+              <Skeleton className="aspect-[16/9] rounded-none" />
+              <div className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <Skeleton className="h-6 w-2/3" />
+                  <Skeleton className="h-6 w-16 shrink-0" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -257,14 +307,17 @@ function CatalogLoadingState() {
 function CatalogStatePanel({
   title,
   message,
+  action,
 }: {
   title: string;
   message: string;
+  action?: ReactNode;
 }) {
   return (
     <section className="border-y border-slate-200 bg-white px-5 py-8">
       <h1 className="text-xl font-semibold text-slate-950">{title}</h1>
       <p className="mt-2 text-sm leading-6 text-slate-600">{message}</p>
+      {action && <div className="mt-5">{action}</div>}
       <Link
         className="mt-6 inline-flex min-h-10 items-center rounded-[6px] border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
         href="/"

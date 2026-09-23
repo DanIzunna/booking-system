@@ -19,7 +19,7 @@ export interface Bookable {
   organizationId: string;
   name: string;
   description?: string;
-  imageUrl?: string | null;
+  images: BookableImage[];
   slug: string;
   status: BookableStatus;
   pricingType: PricingType;
@@ -30,6 +30,13 @@ export interface Bookable {
   createdAt: string;
   updatedAt: string;
   reservationRule: BookableReservationRule | null;
+}
+
+export interface BookableImage {
+  id: string;
+  url: string;
+  sortOrder: number;
+  isPrimary: boolean;
 }
 
 export interface CreateBookableInput {

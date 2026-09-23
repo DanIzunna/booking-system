@@ -13,6 +13,7 @@ import type { ReservationResult, ReservationStatus } from "../../types/reservati
 import { EmptyState } from "../../components/empty-state";
 import { CustomerContainer } from "../../components/layout/customer-shell";
 import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 
 export default function ReservationsPage() {
@@ -21,6 +22,7 @@ export default function ReservationsPage() {
   const [reservations, setReservations] = useState<ReservationResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -50,7 +52,15 @@ export default function ReservationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [status]);
+  }, [retryToken, status]);
+
+  function retryLoading() {
+    if (loading) return;
+    setError("");
+    setReservations([]);
+    setLoading(true);
+    setRetryToken((current) => current + 1);
+  }
 
   if (status === "loading") {
     return (
@@ -89,6 +99,15 @@ export default function ReservationsPage() {
               We could not load your reservations.
             </h2>
             <p className="mt-2 text-sm text-red-700">{error}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-4 border-red-300 text-red-800 hover:bg-red-100"
+              onClick={retryLoading}
+              disabled={loading}
+            >
+              Try again
+            </Button>
           </section>
         ) : reservations.length === 0 ? (
           <div className="mt-8 max-w-xl">
@@ -122,7 +141,7 @@ function ReservationRow({ reservation }: { reservation: ReservationResult }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-semibold text-slate-950">
-                Reservation
+                {reservation.bookable.name}
               </h2>
               <StatusBadge status={reservation.status} />
             </div>
@@ -146,7 +165,7 @@ function ReservationRow({ reservation }: { reservation: ReservationResult }) {
           </div>
         </div>
         <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-400">
-          Times shown in your browser timezone · Reservation ID {reservation.id}
+          Times shown in your local timezone · Reservation ID {reservation.id}
         </p>
       </article>
     </Link>

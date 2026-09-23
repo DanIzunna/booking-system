@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { use } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -33,6 +32,7 @@ export default function BookablesPage({ params }: BookablesPageProps) {
   const [bookables, setBookables] = useState<Bookable[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<BookableFilterStatus>("ALL");
   const [page, setPage] = useState(1);
@@ -64,7 +64,7 @@ export default function BookablesPage({ params }: BookablesPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [organizationId, status]);
+  }, [organizationId, retryToken, status]);
 
   const filteredBookables = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -97,6 +97,13 @@ export default function BookablesPage({ params }: BookablesPageProps) {
     setStatusFilter("ALL");
   };
 
+  function retryLoading() {
+    setErrorStatus(null);
+    setOrganization(null);
+    setLoaded(false);
+    setRetryToken((current) => current + 1);
+  }
+
   if (status === "loading")
     return (
       <main className="min-h-screen bg-slate-50 p-10 text-sm text-slate-500">
@@ -108,21 +115,65 @@ export default function BookablesPage({ params }: BookablesPageProps) {
   return (
     <PageContainer>
       <main className="px-0 py-0">
-        <Link
-          className="inline-flex items-center gap-2 rounded-[6px] border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
-          href={`/organizations/${organizationId}`}
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          <span>Back to workspace</span>
-        </Link>
         {!loaded && (
-          <section className="mt-8">
+          <section className="mt-8" aria-busy="true" aria-label="Loading Bookables">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="mt-3 h-5 w-72" />
-            <div className="mt-10 space-y-4">
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
+            <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="hidden md:block">
+                <div className="grid grid-cols-[minmax(0,2.4fr)_170px_150px_140px_180px] gap-4 bg-slate-50 px-4 py-3">
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <Skeleton key={index} className="h-3 w-3/4" />
+                  ))}
+                </div>
+                {Array.from({ length: 3 }, (_, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-[minmax(0,2.4fr)_170px_150px_140px_180px] items-start gap-4 border-t border-slate-200 px-4 py-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-14 w-20 shrink-0 rounded-[8px]" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <Skeleton className="h-4 w-2/3" />
+                        <Skeleton className="h-3 w-full max-w-md" />
+                        <Skeleton className="h-5 w-24" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-9 w-14" />
+                      <Skeleton className="h-9 w-20" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="divide-y divide-slate-200 md:hidden">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <div key={index} className="space-y-3 p-3">
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="size-10 shrink-0 rounded-[8px]" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <Skeleton className="h-4 w-2/3" />
+                          <Skeleton className="h-5 w-16 shrink-0" />
+                        </div>
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-4/5" />
+                        <div className="flex gap-3 pt-1">
+                          <Skeleton className="h-3 w-16" />
+                          <Skeleton className="h-3 w-14" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-10 w-16" />
+                      <Skeleton className="h-10 w-24" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -139,19 +190,19 @@ export default function BookablesPage({ params }: BookablesPageProps) {
               Couldn&apos;t load Bookables
             </h1>
             <p className="mt-2 text-sm text-slate-500">Try again shortly</p>
+            <Button className="mt-5" type="button" onClick={retryLoading}>
+              Try again
+            </Button>
           </section>
         )}
         {loaded && errorStatus === null && organization && (
           <>
-            <header className="mt-8 flex flex-col justify-between gap-5 border-b border-slate-200 pb-7 sm:flex-row sm:items-end">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                  {organization.name}
-                </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
                   Bookables
                 </h1>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-1.5 max-w-2xl text-sm text-slate-500">
                   Manage the resources customers can reserve
                 </p>
               </div>
@@ -183,7 +234,7 @@ export default function BookablesPage({ params }: BookablesPageProps) {
                 />
               </div>
             ) : (
-              <section className="mt-8 space-y-4">
+              <section className="mt-4 space-y-4">
                 <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center">
                   <label className="relative block flex-1">
                     <span className="sr-only">Search bookables</span>

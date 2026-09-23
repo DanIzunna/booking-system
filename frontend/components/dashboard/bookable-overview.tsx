@@ -11,6 +11,9 @@ export function BookableOverview({
   organizationId: string;
   bookables: Bookable[];
 }) {
+  const primaryImageUrl = (bookable: Bookable) =>
+    bookable.images.find((image) => image.isPrimary)?.url ?? null;
+
   return (
     <div className="divide-y divide-slate-200 overflow-hidden rounded-[12px] border border-slate-200 bg-white">
       {bookables.map((bookable) => (
@@ -21,9 +24,9 @@ export function BookableOverview({
         >
           <div className="grid gap-3 p-3 sm:grid-cols-[86px_minmax(0,1fr)_auto] sm:items-center sm:p-4">
             <div className="relative aspect-[16/9] overflow-hidden rounded-[8px] border border-slate-200 bg-slate-100">
-              {bookable.imageUrl ? (
+              {primaryImageUrl(bookable) ? (
                 <Image
-                  src={bookable.imageUrl}
+                  src={primaryImageUrl(bookable)!}
                   alt={bookable.name}
                   fill
                   unoptimized

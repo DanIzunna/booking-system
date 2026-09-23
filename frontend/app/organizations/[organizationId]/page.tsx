@@ -152,7 +152,9 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      setReservationError("We could not copy the public booking link. Please try again.");
+      setReservationError(
+        "We could not copy the public booking link. Please try again.",
+      );
     }
   }
 
@@ -257,11 +259,11 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex max-w-full flex-wrap items-center gap-2 sm:justify-end">
                   {publicBookingUrl && (
                     <>
                       <a
-                        className="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+                        className="inline-flex min-h-10 min-w-0 max-w-full items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
                         href={publicBookingUrl}
                         target="_blank"
                         rel="noreferrer"
@@ -276,7 +278,9 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                         className="min-w-10 px-3"
                         onClick={() => void copyOrganizationLink()}
                         aria-label={
-                          copied ? "Copied public booking link" : "Copy public booking link"
+                          copied
+                            ? "Copied public booking link"
+                            : "Copy public booking link"
                         }
                         title={copied ? "Copied" : "Copy link"}
                       >
@@ -292,8 +296,11 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                     </>
                   )}
                   <Button
+                    className="max-w-full"
                     onClick={() =>
-                      router.push(`/organizations/${organizationId}/bookables/new`)
+                      router.push(
+                        `/organizations/${organizationId}/bookables/new`,
+                      )
                     }
                   >
                     <Plus className="size-4" /> Create Bookable
@@ -354,7 +361,8 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                   </div>
                 ) : (
                   <p className="mt-4 text-sm text-slate-400">
-                    A public booking link will be available when this workspace has a slug.
+                    A public booking link will be available when this workspace
+                    has a slug.
                   </p>
                 )}
               </section>
@@ -367,7 +375,9 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
                   <Button
                     className="justify-between"
                     onClick={() =>
-                      router.push(`/organizations/${organizationId}/bookables/new`)
+                      router.push(
+                        `/organizations/${organizationId}/bookables/new`,
+                      )
                     }
                   >
                     <span className="inline-flex items-center gap-2">
@@ -453,7 +463,7 @@ export default function OrganizationPage({ params }: OrganizationPageProps) {
               emptyTitle="No upcoming reservations"
               emptyDescription="Future bookings will appear here once customers reserve a published bookable."
               footerHref={`/organizations/${organizationId}/reservations`}
-              footerLabel="View all reservations"
+              footerLabel="View all"
             />
 
             <section>
@@ -605,10 +615,14 @@ function ReservationSection({
 }) {
   return (
     <section>
-      <div className="flex items-end justify-between gap-4 pb-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+      <div className="flex items-center justify-between gap-3 pb-3">
+        <div className="min-w-0">
+          <h2 className="min-w-0 truncate text-base font-semibold text-slate-950">
+            {title}
+          </h2>
+          <p className="mt-1 hidden text-sm text-slate-500 sm:block">
+            {description}
+          </p>
         </div>
         <Link
           className="inline-flex shrink-0 items-center gap-2 rounded-[6px] border border-slate-300 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950"
@@ -657,34 +671,71 @@ function ReservationRow({
   const paymentStatus = reservation.payment?.status;
 
   return (
-    <div className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(190px,1fr)_auto] lg:items-center">
+    <div className="grid gap-3 px-3 py-3 sm:px-4 sm:py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(190px,1fr)_auto] lg:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-sm font-semibold text-slate-950">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-950">
             {reservation.customer.name}
           </p>
-          <Badge variant={reservation.status === "CONFIRMED" ? "success" : "warning"}>
+          <Badge
+            className="shrink-0"
+            variant={reservation.status === "CONFIRMED" ? "success" : "warning"}
+          >
             {reservation.status}
           </Badge>
         </div>
-        <p className="mt-1 truncate text-xs text-slate-500">
+        <p
+          className="mt-1 hidden truncate text-xs text-slate-500 lg:block"
+          title={reservation.bookable.name}
+        >
           {reservation.customer.email} · {reservation.bookable.name}
         </p>
-      </div>
-      <div className="text-sm text-slate-700">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="size-3.5 text-slate-400" aria-hidden="true" />
-          <span>{formatZonedDateTime(reservation.startAt, organizationTimezone)}</span>
-        </div>
-        <p className="mt-1 pl-5 text-xs text-slate-500">
-          Ends {formatZonedDateTime(reservation.endAt, organizationTimezone)} · {reservation.quantity} guest{reservation.quantity === 1 ? "" : "s"}
+        <p
+          className="mt-1 truncate text-xs text-slate-500 lg:hidden"
+          title={reservation.bookable.name}
+        >
+          {reservation.bookable.name}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        <span className="text-xs font-medium text-slate-700">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-slate-700 lg:hidden">
+        <span className="min-w-0 truncate">
+          {formatZonedDateTime(reservation.startAt, organizationTimezone)}
+        </span>
+        <span className="shrink-0 font-medium text-slate-900">
           {formatMoneyMinorUnits(reservation.amount, reservation.currency)}
         </span>
-        {paymentStatus && <Badge variant={paymentStatus === "SUCCEEDED" ? "success" : "neutral"}>{paymentStatus}</Badge>}
+      </div>
+      <div className="hidden text-sm text-slate-700 lg:block">
+        <div className="flex items-center gap-2">
+          <CalendarDays
+            className="size-3.5 text-slate-400"
+            aria-hidden="true"
+          />
+          <span>
+            {formatZonedDateTime(reservation.startAt, organizationTimezone)}
+          </span>
+        </div>
+        <p className="text-slate-500 lg:mt-1 lg:pl-5">
+          Ends {formatZonedDateTime(reservation.endAt, organizationTimezone)} ·{" "}
+          {reservation.quantity} guest{reservation.quantity === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div
+        className={`flex flex-wrap items-center gap-2 lg:justify-end ${
+          showActions ? "" : "hidden lg:flex"
+        }`}
+      >
+        <span className="hidden text-xs font-medium text-slate-700 lg:inline">
+          {formatMoneyMinorUnits(reservation.amount, reservation.currency)}
+        </span>
+        {paymentStatus && (
+          <Badge
+            className="hidden lg:inline-flex"
+            variant={paymentStatus === "SUCCEEDED" ? "success" : "neutral"}
+          >
+            {paymentStatus}
+          </Badge>
+        )}
         {showActions && onAction && (
           <div className="flex gap-2">
             <Button

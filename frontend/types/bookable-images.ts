@@ -23,4 +23,5 @@ export interface ReorderBookableImagesInput {
 
 export interface ImageMutationResult {
   deleted: boolean;
+  providerDeleted?: boolean;
 }
