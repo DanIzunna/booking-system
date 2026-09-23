@@ -536,6 +536,64 @@ describe("Bookables (integration)", () => {
     );
   });
 
+  it("includes primary image metadata in authenticated Bookable responses", async () => {
+    const fixture = await createBookable(owner, organization.id, {
+      name: "Image Room",
+      slug: uniqueSlug("image-room"),
+      capacity: 2,
+    });
+    bookableIds.push(fixture.id);
+
+    await prisma.bookableImage.createMany({
+      data: [
+        {
+          bookableId: fixture.id,
+          organizationId: organization.id,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organization.id}/bookables/${fixture.id}/primary.jpg`,
+          url: "https://ik.example/primary.jpg",
+          originalFilename: "primary.jpg",
+          mimeType: "image/jpeg",
+          fileSizeBytes: 100,
+          width: 1200,
+          height: 800,
+          sortOrder: 0,
+          isPrimary: true,
+        },
+        {
+          bookableId: fixture.id,
+          organizationId: organization.id,
+          provider: "IMAGEKIT",
+          providerKey: `organizations/${organization.id}/bookables/${fixture.id}/secondary.jpg`,
+          url: "https://ik.example/secondary.jpg",
+          originalFilename: "secondary.jpg",
+          mimeType: "image/jpeg",
+          fileSizeBytes: 110,
+          width: 1000,
+          height: 700,
+          sortOrder: 1,
+          isPrimary: false,
+        },
+      ],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/bookables/${fixture.id}`)
+      .set("Authorization", `Bearer ${owner.accessToken}`)
+      .expect(200);
+
+    expect(response.body.images).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: expect.any(String),
+          url: "https://ik.example/primary.jpg",
+          sortOrder: 0,
+          isPrimary: true,
+        }),
+      ]),
+    );
+  });
+
   it("does not let an unrelated user access Bookables by ID or list filter", async () => {
     outsiderBookable = await createBookable(outsider, outsiderOrganization.id, {
       name: "Outsider Room",

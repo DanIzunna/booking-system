@@ -33,6 +33,15 @@ const bookableSelect = {
   createdAt: true,
   updatedAt: true,
   reservationRule: true,
+  images: {
+    orderBy: { sortOrder: "asc" },
+    select: {
+      id: true,
+      url: true,
+      sortOrder: true,
+      isPrimary: true,
+    },
+  },
 } satisfies Prisma.BookableSelect;
 
 @Injectable()

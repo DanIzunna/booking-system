@@ -38,6 +38,12 @@ const reservationSelect = {
 const customerReservationSelect = {
   id: true,
   bookableId: true,
+  bookable: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
   customerId: true,
   startAt: true,
   endAt: true,

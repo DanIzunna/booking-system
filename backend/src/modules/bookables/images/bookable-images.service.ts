@@ -96,7 +96,7 @@ export class BookableImagesService {
     this.assertImageTenant(image, bookable.organizationId);
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "Bookable" WHERE "id" = ${bookableId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "Bookable" WHERE "id" = ${bookableId}::uuid FOR UPDATE`;
       await tx.bookableImage.updateMany({ where: { bookableId, isPrimary: true }, data: { isPrimary: false } });
       return tx.bookableImage.update({ where: { id: imageId }, data: { isPrimary: true } });
     });
@@ -175,8 +175,10 @@ export class BookableImagesService {
       }
     });
 
-    await this.cleanupProviderAsset(imageToStorageRef(image));
-    return { deleted: true };
+    const providerDeleted = await this.cleanupProviderAsset(
+      imageToStorageRef(image),
+    );
+    return { deleted: true, providerDeleted };
   }
 
   private async verifyAsset(organizationId: string, bookableId: string, providerId: string) {
@@ -218,11 +220,13 @@ export class BookableImagesService {
     return `organizations/${organizationId}/bookables/${bookableId}`;
   }
 
-  private async cleanupProviderAsset(asset: StorageAssetRef) {
+  private async cleanupProviderAsset(asset: StorageAssetRef): Promise<boolean> {
     try {
       await this.storage.delete(asset);
+      return true;
     } catch (error) {
       this.logger.warn(`Unable to clean up storage asset ${asset.providerId ?? asset.providerKey}: ${String(error)}`);
+      return false;
     }
   }
 
@@ -244,9 +248,9 @@ export class BookableImagesService {
   }
 }
 
-function imageToStorageRef(image: { providerKey: string; url: string; originalFilename: string | null; mimeType: string; fileSizeBytes: number; width: number | null; height: number | null; id: string }): StorageAssetRef {
+function imageToStorageRef(image: { provider: string; providerKey: string; url: string; originalFilename: string | null; mimeType: string; fileSizeBytes: number; width: number | null; height: number | null; id: string }): StorageAssetRef {
   return {
-    provider: "IMAGEKIT",
+    provider: image.provider as StorageAssetRef["provider"],
     providerKey: image.providerKey,
     publicUrl: image.url,
     originalFilename: image.originalFilename ?? undefined,
