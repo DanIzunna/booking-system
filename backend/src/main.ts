@@ -11,17 +11,20 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api/v1");
   app.use(cookieParser());
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle("Booking System API")
-    .setDescription("Booking System REST API")
-    .setVersion("1.0")
-    .addBearerAuth()
-    .build();
-  SwaggerModule.setup(
-    "api/v1/docs",
-    app,
-    SwaggerModule.createDocument(app, swaggerConfig),
-  );
+  if (process.env.NODE_ENV !== "production") {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("Booking System API")
+      .setDescription("Booking System REST API")
+      .setVersion("1.0")
+      .addBearerAuth()
+      .build();
+
+    SwaggerModule.setup(
+      "api/v1/docs",
+      app,
+      SwaggerModule.createDocument(app, swaggerConfig),
+    );
+  }
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
