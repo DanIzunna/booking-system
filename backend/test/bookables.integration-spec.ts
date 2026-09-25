@@ -21,6 +21,7 @@ interface BookableRecord {
   slug: string;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   capacity: number;
+  capacityType: "RESOURCE" | "EVENT";
 }
 
 describe("Bookables (integration)", () => {
@@ -112,9 +113,12 @@ describe("Bookables (integration)", () => {
       name: "Member Room",
       slug: uniqueSlug("member-room"),
       capacity: 1,
+      capacityType: "EVENT",
     });
     bookableIds.push(memberBookable.id);
     expect(memberBookable.organizationId).toBe(organization.id);
+    expect(memberBookable.capacityType).toBe("EVENT");
+    expect(ownerBookable.capacityType).toBe("RESOURCE");
   });
 
   it("rejects invalid capacity and malformed input", async () => {
@@ -867,6 +871,7 @@ describe("Bookables (integration)", () => {
       description?: string;
       slug: string;
       capacity: number;
+      capacityType?: "RESOURCE" | "EVENT";
       price?: number;
       currency?: string;
     },
@@ -877,6 +882,7 @@ describe("Bookables (integration)", () => {
       .send({
         organizationId,
         pricingType: input.price && input.price > 0 ? "PAID" : "FREE",
+        capacityType: input.capacityType ?? "RESOURCE",
         ...input,
       })
       .expect(201);

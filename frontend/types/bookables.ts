@@ -1,6 +1,7 @@
 export type BookableStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type ReservationDurationMode = "FLEXIBLE" | "FIXED";
 export type PricingType = "FREE" | "PAID";
+export type BookableCapacityType = "RESOURCE" | "EVENT";
 
 export interface BookableReservationRule {
   durationMode: ReservationDurationMode;
@@ -27,6 +28,7 @@ export interface Bookable {
   price: number | null;
   currency: string | null;
   capacity: number;
+  capacityType: BookableCapacityType;
   createdAt: string;
   updatedAt: string;
   reservationRule: BookableReservationRule | null;
@@ -44,6 +46,7 @@ export interface CreateBookableInput {
   name: string;
   description?: string;
   capacity: number;
+  capacityType?: BookableCapacityType;
   pricingType: PricingType;
   price?: number | null;
   currency?: string | null;
@@ -59,6 +62,7 @@ export interface UpdateBookableInput {
   status?: BookableStatus;
   pricingType?: PricingType;
   capacity?: number;
+  capacityType?: BookableCapacityType;
   price?: number | null;
   currency?: string | null;
   confirmationPolicy?: ConfirmationPolicy;

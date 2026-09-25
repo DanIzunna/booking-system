@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  BookableCapacityType,
   BookableStatus,
   ConfirmationPolicy,
   Prisma,
@@ -27,6 +28,7 @@ const bookableSelect = {
   status: true,
   pricingType: true,
   confirmationPolicy: true,
+  capacityType: true,
   capacity: true,
   price: true,
   currency: true,
@@ -85,6 +87,7 @@ export class BookablesService {
             pricingType: input.pricingType,
             confirmationPolicy:
               input.confirmationPolicy ?? ConfirmationPolicy.AUTOMATIC,
+            capacityType: input.capacityType ?? BookableCapacityType.RESOURCE,
             capacity: input.capacity,
             price: input.pricingType === PricingType.FREE ? null : input.price,
             currency:
@@ -213,6 +216,9 @@ export class BookablesService {
           ...(input.confirmationPolicy === undefined
             ? {}
             : { confirmationPolicy: input.confirmationPolicy }),
+          ...(input.capacityType === undefined
+            ? {}
+            : { capacityType: input.capacityType }),
           ...(input.capacity === undefined ? {} : { capacity: input.capacity }),
           ...(input.pricingType === undefined &&
           input.price === undefined &&

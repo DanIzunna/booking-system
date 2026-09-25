@@ -241,7 +241,7 @@ export default function PublicOrganizationPage({
                           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
                               <Users className="size-3.5" aria-hidden="true" />
-                              {bookable.capacity} seats
+                              {bookable.capacity} {bookable.capacityType === "EVENT" ? `guest${bookable.capacity === 1 ? "" : "s"}` : `unit${bookable.capacity === 1 ? "" : "s"}`}
                             </span>
                           </div>
 

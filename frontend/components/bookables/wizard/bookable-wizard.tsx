@@ -14,7 +14,7 @@ import { ApiError } from "../../../lib/api/client";
 import { formatMoneyMinorUnits, toMinorUnits } from "../../../lib/currency";
 import { getOrganization } from "../../../lib/api/organizations";
 import type { AvailabilityWindow } from "../../../types/availability";
-import type { PricingType } from "../../../types/bookables";
+import type { BookableCapacityType, PricingType } from "../../../types/bookables";
 import {
   StepAvailability,
   type DraftRecurringWindow,
@@ -45,6 +45,7 @@ export function BookableWizard({ organizationId }: BookableWizardProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [capacity, setCapacity] = useState("1");
+  const [capacityType, setCapacityType] = useState<BookableCapacityType>("RESOURCE");
   const [pricingType, setPricingType] = useState<PricingType>("FREE");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("NGN");
@@ -110,6 +111,7 @@ export function BookableWizard({ organizationId }: BookableWizardProps) {
           name: name.trim(),
           description: description.trim() || undefined,
           capacity: Number(capacity),
+          capacityType,
           pricingType,
           price: pricingType === "PAID" ? Number(price) : null,
           currency: pricingType === "PAID" ? currency.trim().toUpperCase() : null,
@@ -121,6 +123,7 @@ export function BookableWizard({ organizationId }: BookableWizardProps) {
           name: name.trim(),
           description: description.trim() || undefined,
           capacity: Number(capacity),
+          capacityType,
           pricingType,
           price: pricingType === "PAID" ? Number(price) : null,
           currency: pricingType === "PAID" ? currency.trim().toUpperCase() : null,
@@ -529,6 +532,7 @@ export function BookableWizard({ organizationId }: BookableWizardProps) {
           name={name}
           description={description}
           capacity={capacity}
+          capacityType={capacityType}
           pricingType={pricingType}
           price={price}
           currency={currency}
@@ -537,6 +541,7 @@ export function BookableWizard({ organizationId }: BookableWizardProps) {
           onNameChange={setName}
           onDescriptionChange={setDescription}
           onCapacityChange={setCapacity}
+          onCapacityTypeChange={setCapacityType}
           onPricingTypeChange={setPricingType}
           onPriceChange={setPrice}
           onCurrencyChange={setCurrency}

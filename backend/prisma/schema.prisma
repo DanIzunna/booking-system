@@ -28,6 +28,11 @@ enum PricingType {
   PAID
 }
 
+enum BookableCapacityType {
+  RESOURCE
+  EVENT
+}
+
 enum DurationMode {
   FLEXIBLE
   FIXED
@@ -152,6 +157,7 @@ model Bookable {
   status            BookableStatus             @default(DRAFT)
   pricingType       PricingType
   confirmationPolicy ConfirmationPolicy       @default(AUTOMATIC)
+  capacityType      BookableCapacityType      @default(RESOURCE)
   capacity          Int
   price             Int?
   currency          String?                   @db.Char(3)

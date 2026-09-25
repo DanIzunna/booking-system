@@ -111,6 +111,7 @@ describe("Public booking (integration)", () => {
     expect(Object.keys(response.body).sort()).toEqual(
       [
         "capacity",
+        "capacityType",
         "confirmationPolicy",
         "currency",
         "description",

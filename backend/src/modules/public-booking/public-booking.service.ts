@@ -27,6 +27,7 @@ const publicBookableSelect = {
   price: true,
   currency: true,
   capacity: true,
+  capacityType: true,
   images: {
     orderBy: { sortOrder: "asc" },
     select: {
@@ -65,6 +66,7 @@ const publicOrganizationSelect = {
       price: true,
       currency: true,
       capacity: true,
+      capacityType: true,
       images: {
         orderBy: { sortOrder: "asc" },
         select: {

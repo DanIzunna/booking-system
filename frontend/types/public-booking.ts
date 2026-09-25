@@ -21,6 +21,7 @@ export interface PublicBookable {
   imageUrl?: string | null;
   images: PublicBookableImage[];
   capacity: number;
+  capacityType: "RESOURCE" | "EVENT";
   status?: BookableStatus;
   pricingType: PricingType;
   confirmationPolicy: ConfirmationPolicy;
@@ -54,6 +55,7 @@ export interface PublicOrganization {
       | "price"
       | "currency"
       | "capacity"
+      | "capacityType"
       | "pricingType"
     >
   >;

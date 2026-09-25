@@ -2,13 +2,14 @@ import type { FormEvent } from "react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
-import type { PricingType } from "../../../types/bookables";
+import type { BookableCapacityType, PricingType } from "../../../types/bookables";
 
 interface StepBasicsProps {
   name: string;
   description: string;
   capacity: string;
   pricingType: PricingType;
+  capacityType: BookableCapacityType;
   price: string;
   currency: string;
   submitting: boolean;
@@ -17,6 +18,7 @@ interface StepBasicsProps {
   onDescriptionChange: (value: string) => void;
   onCapacityChange: (value: string) => void;
   onPricingTypeChange: (value: PricingType) => void;
+  onCapacityTypeChange: (value: BookableCapacityType) => void;
   onPriceChange: (value: string) => void;
   onCurrencyChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -27,6 +29,7 @@ export function StepBasics({
   description,
   capacity,
   pricingType,
+  capacityType,
   price,
   currency,
   submitting,
@@ -35,6 +38,7 @@ export function StepBasics({
   onDescriptionChange,
   onCapacityChange,
   onPricingTypeChange,
+  onCapacityTypeChange,
   onPriceChange,
   onCurrencyChange,
   onSubmit,
@@ -77,6 +81,21 @@ export function StepBasics({
             onChange={(event) => onCapacityChange(event.target.value)}
             required
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="wizard-bookable-capacity-type">Capacity meaning</Label>
+          <select
+            id="wizard-bookable-capacity-type"
+            value={capacityType}
+            onChange={(event) =>
+              onCapacityTypeChange(event.target.value as BookableCapacityType)
+            }
+            className="min-h-10 w-full rounded-[6px] border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-slate-950 focus:ring-2 focus:ring-slate-200"
+          >
+            <option value="RESOURCE">Units / copies</option>
+            <option value="EVENT">Attendees / guests</option>
+          </select>
         </div>
 
         <div className="space-y-2">

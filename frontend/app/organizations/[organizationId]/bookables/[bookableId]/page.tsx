@@ -21,6 +21,7 @@ import {
 } from "../../../../../lib/currency";
 import type {
   Bookable,
+  BookableCapacityType,
   BookableStatus,
   PricingType,
 } from "../../../../../types/bookables";
@@ -64,6 +65,7 @@ export default function BookablePage({ params }: BookablePageProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [capacityType, setCapacityType] = useState<BookableCapacityType>("RESOURCE");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("NGN");
   const [pricingType, setPricingType] = useState<PricingType>("FREE");
@@ -176,6 +178,7 @@ export default function BookablePage({ params }: BookablePageProps) {
         setName(nextBookable.name);
         setDescription(nextBookable.description ?? "");
         setCapacity(String(nextBookable.capacity));
+        setCapacityType(nextBookable.capacityType);
         setPricingType(nextBookable.pricingType);
         setPrice(
           nextBookable.price === null
@@ -258,6 +261,7 @@ export default function BookablePage({ params }: BookablePageProps) {
         name: name.trim(),
         description: description.trim() || undefined,
         capacity: Number(capacity),
+        capacityType,
         pricingType,
         price: pricingType === "PAID" ? Number(price) : null,
         currency: pricingType === "PAID" ? currency.trim().toUpperCase() : null,
@@ -624,6 +628,18 @@ export default function BookablePage({ params }: BookablePageProps) {
                       onChange={(event) => setCapacity(event.target.value)}
                       required
                     />
+                  </label>
+                  <label className={styles.formField}>
+                    Capacity meaning
+                    <select
+                      value={capacityType}
+                      onChange={(event) =>
+                        setCapacityType(event.target.value as BookableCapacityType)
+                      }
+                    >
+                      <option value="RESOURCE">Units / copies</option>
+                      <option value="EVENT">Attendees / guests</option>
+                    </select>
                   </label>
                   <fieldset className={styles.formField}>
                     <legend>Pricing</legend>

@@ -88,13 +88,13 @@ export function BookableRow({
               <div className="mt-2 hidden flex-wrap items-center gap-2 text-[11px] text-slate-600 md:flex">
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
                   <Users className="size-3 text-slate-500" aria-hidden="true" />
-                  {bookable.capacity} guest{bookable.capacity === 1 ? "" : "s"}
+                  {bookable.capacity} {bookable.capacityType === "EVENT" ? `guest${bookable.capacity === 1 ? "" : "s"}` : `unit${bookable.capacity === 1 ? "" : "s"}`}
                 </span>
               </div>
               <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 md:hidden">
                 <span className="inline-flex items-center gap-1.5">
                   <Users className="size-3.5 text-slate-500" aria-hidden="true" />
-                  {bookable.capacity} guest{bookable.capacity === 1 ? "" : "s"}
+                  {bookable.capacity} {bookable.capacityType === "EVENT" ? `guest${bookable.capacity === 1 ? "" : "s"}` : `unit${bookable.capacity === 1 ? "" : "s"}`}
                 </span>
                 <span className="font-medium text-slate-800">{priceText}</span>
               </div>
@@ -113,7 +113,9 @@ export function BookableRow({
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 md:hidden">
             Capacity
           </div>
-          <div className="mt-1 md:mt-0">Capacity · {bookable.capacity}</div>
+          <div className="mt-1 md:mt-0">
+            {bookable.capacityType === "EVENT" ? "Guests" : "Units"} · {bookable.capacity}
+          </div>
         </div>
 
         <div className="hidden text-sm font-medium text-slate-800 md:block md:pl-2">

@@ -56,7 +56,7 @@ export function BookableOverview({
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
                   <Users className="size-3 text-slate-500" aria-hidden="true" />
-                  {bookable.capacity} guest{bookable.capacity === 1 ? "" : "s"}
+                  {bookable.capacity} {bookable.capacityType === "EVENT" ? `guest${bookable.capacity === 1 ? "" : "s"}` : `unit${bookable.capacity === 1 ? "" : "s"}`}
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { Transform, Type } from "class-transformer";
 import { ValidateNested } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  BookableCapacityType,
   BookableStatus,
   ConfirmationPolicy,
   PricingType,
@@ -52,6 +53,11 @@ export class UpdateBookableDto {
   @IsOptional()
   @IsEnum(ConfirmationPolicy)
   confirmationPolicy?: ConfirmationPolicy;
+
+  @ApiPropertyOptional({ enum: BookableCapacityType })
+  @IsOptional()
+  @IsEnum(BookableCapacityType)
+  capacityType?: BookableCapacityType;
 
   @ApiPropertyOptional({ enum: PricingType })
   @IsOptional()

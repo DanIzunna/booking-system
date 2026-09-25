@@ -476,7 +476,7 @@ export default function PublicBookingPage({ params }: PublicBookingPageProps) {
             {formatTimeZoneName(bookable.organization.timezone)}
           </span>
           <span className="inline-flex min-h-10 items-center rounded-[6px] bg-slate-50 px-3 text-xs text-slate-600">
-            Capacity {bookable.capacity} per reservation
+            {bookable.capacity} {bookable.capacityType === "EVENT" ? `guest${bookable.capacity === 1 ? "" : "s"}` : `unit${bookable.capacity === 1 ? "" : "s"}`} per reservation
           </span>
           <span className="inline-flex min-h-10 items-center rounded-[6px] bg-slate-50 px-3 text-xs text-slate-600">
             {bookable.pricingType === "FREE"
