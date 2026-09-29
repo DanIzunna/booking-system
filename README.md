@@ -8,7 +8,6 @@ The project focuses on the backend engineering problems behind booking systems: 
 
 Live application: https://bookable-six.vercel.app/
 
-
 Why I Built This
 
 Booking systems look simple until multiple users interact with them concurrently.
@@ -35,7 +34,6 @@ The main goals were to build a system that:
 - integrates external services behind explicit abstractions
 - remains deployable as a modular monolith rather than introducing microservices prematurely
 
-
 Architecture
 
 Bookable uses a domain-oriented modular monolith.
@@ -54,7 +52,6 @@ The modular monolith approach keeps domain boundaries explicit without introduci
 
 If the system eventually develops a genuine scaling or ownership boundary, individual domains can be extracted later.
 
-
 Core Domain Model
 
 Bookable is organized around a small set of core concepts:
@@ -71,12 +68,12 @@ Bookable is organized around a small set of core concepts:
 The central relationship is:
 
 User
-  └── OrganizationMembership
-        └── Organization
-              ├── Bookables
-              ├── Availability
-              ├── Reservations
-              └── Payment Account
+└── OrganizationMembership
+    └── Organization
+        ├── Bookables
+        ├── Availability
+        ├── Reservations
+        └── Payment Account
 
 A user can belong to multiple organizations without duplicating the underlying user account.
 
@@ -99,13 +96,13 @@ The architecture avoids treating IDs received from the client as sufficient auth
 
 Conceptually:
 
-authenticated user
+Authenticated User
         ↓
-organization membership
+Organization Membership
         ↓
-organization-scoped resource
+Organization-Scoped Resource
         ↓
-authorized operation
+Authorized Operation
 
 Tenant isolation is therefore an application-level invariant rather than merely a frontend routing convention.
 
@@ -139,7 +136,6 @@ These allow multiple reservations up to a defined capacity.
 
 Both use the same reservation domain while their booking rules determine how availability and capacity are evaluated.
 
-
 Availability Model
 
 Availability is deliberately modelled separately from reservations.
@@ -158,7 +154,6 @@ The organization's timezone is authoritative for scheduling.
 The application does not treat the customer's browser timezone as the source of truth for organizational availability. Reservation instants are persisted consistently so the system can reason about actual booking times independently of presentation.
 
 This also avoids pre-generating every possible available slot. Availability is derived from schedules, exceptions, and existing reservations rather than maintaining a large collection of materialized slots that would need to stay synchronized when scheduling rules change.
-
 
 Concurrency Control
 
@@ -205,7 +200,6 @@ The final validation therefore happens inside the transaction after synchronizat
 
 The database participates directly in the concurrency-control strategy rather than relying solely on application-level checks.
 
-
 Reservation Lifecycle
 
 A reservation is not represented as a simple boolean such as "booked = true".
@@ -230,7 +224,6 @@ Approval:     WAITING
 The reservation does not become confirmed merely because payment succeeded.
 
 This separation prevents payment state from becoming an implicit representation of the reservation lifecycle.
-
 
 Booking Rules
 
@@ -266,7 +259,6 @@ When both payment and approval are required, both conditions must be satisfied.
 
 This allows financial state and operational approval to evolve independently.
 
-
 Payments
 
 Payment is part of the domain model, but the final production payment flow is intentionally deferred.
@@ -293,7 +285,6 @@ These were intentionally not rushed into the MVP after the core booking workflow
 
 The goal is to avoid implementing only the happy path and calling the payment system complete.
 
-
 Idempotency and Retries
 
 External systems introduce a different class of consistency problems.
@@ -315,7 +306,6 @@ Payment Provider
 A production payment implementation therefore needs idempotent processing so that repeated delivery of the same event cannot produce duplicate domain effects.
 
 This is one of the areas intentionally left for the next payment implementation phase rather than treating the current payment foundation as a complete production integration.
-
 
 Media Architecture
 
@@ -361,7 +351,6 @@ Major areas include:
 
 Swagger/OpenAPI is used for API documentation and development.
 
-
 Frontend
 
 The frontend is built with:
@@ -402,7 +391,6 @@ Organization members can:
 
 Organization routes are scoped by organization ID.
 
-
 Project Structure
 
 The repository is divided into frontend and backend applications.
@@ -437,7 +425,6 @@ booking-system/
 
 The backend follows NestJS's module structure while keeping domain concerns separated.
 
-
 Technology Stack
 
 Backend
@@ -462,7 +449,6 @@ Infrastructure & Integrations
 - PostgreSQL — production database
 - ImageKit — image storage
 - Stripe Connect — payment-account foundation
-
 
 Local Development
 
@@ -522,7 +508,6 @@ Start the development server:
 
 npm run dev
 
-
 Testing
 
 The project includes backend integration/unit tests and frontend end-to-end coverage.
@@ -562,7 +547,6 @@ Important invariants are enforced through a combination of:
 
 The application does not treat the frontend as a trusted source for authorization or booking validity.
 
-
 Engineering Trade-offs
 
 Why PostgreSQL?
@@ -601,7 +585,6 @@ External vendors should not become domain concepts.
 
 The system needs to know that an image can be stored or that a payment can be processed; it should not require the booking domain to understand every provider's API.
 
-
 Current Scope
 
 The current MVP includes:
@@ -625,7 +608,6 @@ The current MVP includes:
 - Stripe Connect foundation
 - responsive public booking experience
 
-
 Deferred Work
 
 The project is intentionally not treated as feature-complete.
@@ -643,7 +625,6 @@ Areas deferred for subsequent iterations include:
 - additional resource/lending workflows
 
 The intention is to validate the core booking model with real users before expanding the system further.
-
 
 What I Learned
 
@@ -664,7 +645,6 @@ The difficult questions are about invariants and failure modes:
 «Which invariants should be protected by the database?»
 
 These questions shaped most of the important architectural decisions in the project.
-
 
 Status
 
