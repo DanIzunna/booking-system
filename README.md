@@ -1,4 +1,4 @@
-Bookable
+# Bookable
 
 Bookable is a multi-tenant booking platform for organizations managing time-based and capacity-based resources.
 
@@ -6,14 +6,15 @@ It is designed around a general booking domain rather than a single business use
 
 The project focuses on the backend engineering problems behind booking systems: multi-tenancy, availability modelling, transactional booking, concurrency control, reservation state, capacity management, external service boundaries, and payment workflows.
 
-Live application: https://bookable-six.vercel.app/
+**Live application:** https://bookable-six.vercel.app/
 
-Why I Built This
+## Why I Built This
 
 Booking systems look simple until multiple users interact with them concurrently.
 
 A basic implementation might do:
 
+```text
 check availability
 create reservation
 
@@ -25,14 +26,22 @@ Bookable was built to explore these problems while keeping the architecture prac
 
 The main goals were to build a system that:
 
-- supports multiple organizations
-- isolates organization data and authorization
-- supports different types of bookable resources
-- models availability independently from reservations
-- protects booking operations against concurrent requests
-- represents reservation, payment, and approval state independently
-- integrates external services behind explicit abstractions
-- remains deployable as a modular monolith rather than introducing microservices prematurely
+supports multiple organizations
+
+isolates organization data and authorization
+
+supports different types of bookable resources
+
+models availability independently from reservations
+
+protects booking operations against concurrent requests
+
+represents reservation, payment, and approval state independently
+
+integrates external services behind explicit abstractions
+
+remains deployable as a modular monolith rather than introducing microservices prematurely
+
 
 Architecture
 
@@ -56,24 +65,32 @@ Core Domain Model
 
 Bookable is organized around a small set of core concepts:
 
-- User — global identity
-- Organization — tenant/workspace
-- OrganizationMembership — relationship between a user and an organization
-- Bookable — resource made available for reservation
-- Availability — rules defining when a Bookable can be reserved
-- Reservation — customer's booking
-- Payment — financial state associated with a reservation
-- MediaAsset — external media associated with a Bookable
+User — global identity
+
+Organization — tenant/workspace
+
+OrganizationMembership — relationship between a user and an organization
+
+Bookable — resource made available for reservation
+
+Availability — rules defining when a Bookable can be reserved
+
+Reservation — customer's booking
+
+Payment — financial state associated with a reservation
+
+MediaAsset — external media associated with a Bookable
+
 
 The central relationship is:
 
 User
-└── OrganizationMembership
-    └── Organization
-        ├── Bookables
-        ├── Availability
-        ├── Reservations
-        └── Payment Account
+  └── OrganizationMembership
+        └── Organization
+              ├── Bookables
+              ├── Availability
+              ├── Reservations
+              └── Payment Account
 
 A user can belong to multiple organizations without duplicating the underlying user account.
 
@@ -81,12 +98,14 @@ Multi-Tenancy
 
 An Organization represents a tenant.
 
-A User represents a global identity, while "OrganizationMembership" represents the user's relationship with an organization and determines their role within that organization.
+A User represents a global identity, while OrganizationMembership represents the user's relationship with an organization and determines their role within that organization.
 
 For the MVP, organization membership supports:
 
-- "OWNER"
-- "MEMBER"
+OWNER
+
+MEMBER
+
 
 Authorization is evaluated in the context of the organization being accessed rather than simply checking whether the user is authenticated.
 
@@ -96,13 +115,13 @@ The architecture avoids treating IDs received from the client as sufficient auth
 
 Conceptually:
 
-Authenticated User
+authenticated user
         ↓
-Organization Membership
+organization membership
         ↓
-Organization-Scoped Resource
+organization-scoped resource
         ↓
-Authorized Operation
+authorized operation
 
 Tenant isolation is therefore an application-level invariant rather than merely a frontend routing convention.
 
@@ -116,10 +135,14 @@ Time-Based Resources
 
 Examples:
 
-- consultations
-- appointments
-- meeting rooms
-- equipment rentals
+consultations
+
+appointments
+
+meeting rooms
+
+equipment rentals
+
 
 These are constrained by time intervals and availability.
 
@@ -127,10 +150,14 @@ Capacity-Based Resources
 
 Examples:
 
-- workshops
-- classes
-- seminars
-- events
+workshops
+
+classes
+
+seminars
+
+events
+
 
 These allow multiple reservations up to a defined capacity.
 
@@ -162,7 +189,11 @@ One of the most important parts of Bookable is the reservation creation path.
 A naïve implementation might be:
 
 1. Check availability
+
+
 2. Create reservation
+
+
 
 That is vulnerable to a race condition.
 
@@ -202,16 +233,22 @@ The database participates directly in the concurrency-control strategy rather th
 
 Reservation Lifecycle
 
-A reservation is not represented as a simple boolean such as "booked = true".
+A reservation is not represented as a simple boolean such as booked = true.
 
 The system models an explicit lifecycle including:
 
 PENDING
+
 CONFIRMED
+
 REJECTED
+
 CANCELLED
+
 EXPIRED
+
 COMPLETED
+
 
 Payment state and approval state are intentionally separate from reservation state.
 
@@ -265,21 +302,33 @@ Payment is part of the domain model, but the final production payment flow is in
 
 The project already contains the foundation for:
 
-- organization payment accounts
-- payment state
-- paid Bookables
-- Stripe Connect configuration
-- payment-provider abstraction
-- development and testing payment flows
+organization payment accounts
+
+payment state
+
+paid Bookables
+
+Stripe Connect configuration
+
+payment-provider abstraction
+
+development and testing payment flows
+
 
 The remaining production work includes concerns such as:
 
-- verified payment webhooks
-- idempotent webhook processing
-- safe repeated event handling
-- reconciliation
-- production payment failure handling
-- refunds and related financial workflows
+verified payment webhooks
+
+idempotent webhook processing
+
+safe repeated event handling
+
+reconciliation
+
+production payment failure handling
+
+refunds and related financial workflows
+
 
 These were intentionally not rushed into the MVP after the core booking workflow was validated.
 
@@ -355,10 +404,14 @@ Frontend
 
 The frontend is built with:
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
+Next.js
+
+React
+
+TypeScript
+
+Tailwind CSS
+
 
 There are two major application experiences.
 
@@ -366,12 +419,18 @@ Public Experience
 
 Customers can:
 
-- browse an organization's published Bookables
-- view Bookable details
-- inspect availability
-- make reservations
-- view booking confirmation
-- manage their reservations
+browse an organization's published Bookables
+
+view Bookable details
+
+inspect availability
+
+make reservations
+
+view booking confirmation
+
+manage their reservations
+
 
 Public routes follow the organization/Bookable structure:
 
@@ -382,12 +441,18 @@ Organization Experience
 
 Organization members can:
 
-- manage Bookables
-- configure availability
-- manage images
-- view reservations
-- approve/reject reservations where applicable
-- configure payment settings
+manage Bookables
+
+configure availability
+
+manage images
+
+view reservations
+
+approve/reject reservations where applicable
+
+configure payment settings
+
 
 Organization routes are scoped by organization ID.
 
@@ -429,26 +494,40 @@ Technology Stack
 
 Backend
 
-- NestJS — backend framework
-- TypeScript — application language
-- PostgreSQL — relational database and transactional source of truth
-- Prisma — ORM/database access
-- Swagger/OpenAPI — API documentation
-- Jest — backend testing
-- class-validator / class-transformer — request validation and transformation
+NestJS — backend framework
+
+TypeScript — application language
+
+PostgreSQL — relational database and transactional source of truth
+
+Prisma — ORM/database access
+
+Swagger/OpenAPI — API documentation
+
+Jest — backend testing
+
+class-validator / class-transformer — request validation and transformation
+
 
 Frontend
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
+Next.js
+
+React
+
+TypeScript
+
+Tailwind CSS
+
 
 Infrastructure & Integrations
 
-- PostgreSQL — production database
-- ImageKit — image storage
-- Stripe Connect — payment-account foundation
+PostgreSQL — production database
+
+ImageKit — image storage
+
+Stripe Connect — payment-account foundation
+
 
 Local Development
 
@@ -456,10 +535,14 @@ Prerequisites
 
 You will need:
 
-- Node.js
-- npm
-- PostgreSQL
-- Git
+Node.js
+
+npm
+
+PostgreSQL
+
+Git
+
 
 Clone
 
@@ -538,12 +621,18 @@ PostgreSQL is treated as the source of truth for the core domain.
 
 Important invariants are enforced through a combination of:
 
-- relational constraints
-- unique constraints
-- foreign keys
-- transactions
-- row-level locking
-- application-level validation
+relational constraints
+
+unique constraints
+
+foreign keys
+
+transactions
+
+row-level locking
+
+application-level validation
+
 
 The application does not treat the frontend as a trusted source for authorization or booking validity.
 
@@ -589,24 +678,42 @@ Current Scope
 
 The current MVP includes:
 
-- multi-tenant organizations
-- user authentication
-- organization memberships
-- Bookable management
-- time-based resources
-- capacity-based resources
-- recurring availability
-- availability exceptions
-- reservation creation
-- reservation lifecycle
-- concurrency-safe booking
-- customer reservations
-- organization reservation management
-- Bookable images
-- ImageKit storage integration
-- payment domain and account foundation
-- Stripe Connect foundation
-- responsive public booking experience
+multi-tenant organizations
+
+user authentication
+
+organization memberships
+
+Bookable management
+
+time-based resources
+
+capacity-based resources
+
+recurring availability
+
+availability exceptions
+
+reservation creation
+
+reservation lifecycle
+
+concurrency-safe booking
+
+customer reservations
+
+organization reservation management
+
+Bookable images
+
+ImageKit storage integration
+
+payment domain and account foundation
+
+Stripe Connect foundation
+
+responsive public booking experience
+
 
 Deferred Work
 
@@ -614,15 +721,24 @@ The project is intentionally not treated as feature-complete.
 
 Areas deferred for subsequent iterations include:
 
-- production payment processing
-- verified payment webhooks
-- idempotent payment event processing
-- payment reconciliation
-- refunds
-- disputes/chargebacks
-- additional payment providers
-- more advanced reporting
-- additional resource/lending workflows
+production payment processing
+
+verified payment webhooks
+
+idempotent payment event processing
+
+payment reconciliation
+
+refunds
+
+disputes/chargebacks
+
+additional payment providers
+
+more advanced reporting
+
+additional resource/lending workflows
+
 
 The intention is to validate the core booking model with real users before expanding the system further.
 
@@ -632,17 +748,29 @@ The main lesson from Bookable was that a booking system becomes interesting when
 
 The difficult questions are about invariants and failure modes:
 
-«What happens when two customers book the same resource simultaneously?»
+> What happens when two customers book the same resource simultaneously?
 
-«What happens when a request is retried?»
 
-«Which system owns the truth when an external provider is involved?»
 
-«Where is tenant isolation actually enforced?»
+> What happens when a request is retried?
 
-«Which state belongs to the reservation and which belongs to the payment?»
 
-«Which invariants should be protected by the database?»
+
+> Which system owns the truth when an external provider is involved?
+
+
+
+> Where is tenant isolation actually enforced?
+
+
+
+> Which state belongs to the reservation and which belongs to the payment?
+
+
+
+> Which invariants should be protected by the database?
+
+
 
 These questions shaped most of the important architectural decisions in the project.
 
